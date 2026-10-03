@@ -1,0 +1,24 @@
+CREATE TABLE calendar (
+  id INTEGER PRIMARY KEY,
+  access_code_hash TEXT NOT NULL,
+  season_year INTEGER NOT NULL,
+  test_day INTEGER NOT NULL DEFAULT 1 CHECK (test_day BETWEEN 1 AND 25),
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE sessions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  token_hash TEXT NOT NULL UNIQUE,
+  partner TEXT NOT NULL CHECK (partner IN ('pia', 'paul')),
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE answers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  day INTEGER NOT NULL CHECK (day BETWEEN 1 AND 24),
+  author TEXT NOT NULL CHECK (author IN ('pia', 'paul')),
+  content TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (day, author)
+);

@@ -1,9 +1,10 @@
 export interface Env {
   DB: D1Database;
+  TEST_MODE?: string;
 }
 
 type Partner = "pia" | "paul";
-type Calendar = { id: number; access_code_hash: string; season_year: number };
+type Calendar = { id: number; access_code_hash: string; season_year: number; test_day?: number };
 type Session = { partner: Partner };
 
 const JSON_HEADERS = { "content-type": "application/json; charset=UTF-8" };
@@ -27,6 +28,7 @@ async function route(request: Request, env: Env, path: string): Promise<Response
   if (path === "/api/setup" && request.method === "POST") return setup(request, env);
   if (path === "/api/session" && request.method === "POST") return signIn(request, env);
   if (path === "/api/answers" && request.method === "PUT") return saveAnswer(request, env);
+  if (path === "/api/test/day" && request.method === "POST" && isTestEnvironment(env)) return setTestDay(request, env);
   return json({ error: "Nicht gefunden." }, 404);
 }
 
@@ -36,7 +38,7 @@ async function readCalendar(request: Request, env: Env): Promise<Response> {
   const session = await getSession(request, env);
   if (!session) return json({ configured: true, session: null, seasonYear: calendar.season_year });
 
-  const status = seasonStatus(calendar.season_year);
+  const status = seasonStatus(calendar, env);
   const partner = otherPartner(session.partner);
   const [own, received] = await Promise.all([
     env.DB.prepare("SELECT day, content FROM answers WHERE author = ?").bind(session.partner).all<{ day: number; content: string }>(),
@@ -58,7 +60,10 @@ async function setup(request: Request, env: Env): Promise<Response> {
   if (!isPartner(body.partner) || code.length < 6 || code.length > 80) return json({ error: "Wähle dich aus und verwende einen Schlüssel mit mindestens 6 Zeichen." }, 400);
   if (await getCalendar(env)) return json({ error: "Der Kalender wurde bereits eingerichtet." }, 409);
   try {
-    await env.DB.prepare("INSERT INTO calendar (id, access_code_hash, season_year) VALUES (1, ?, ?)").bind(await sha256(code), currentYear()).run();
+    const statement = isTestEnvironment(env)
+      ? env.DB.prepare("INSERT INTO calendar (id, access_code_hash, season_year, test_day) VALUES (1, ?, ?, 1)").bind(await sha256(code), currentYear())
+      : env.DB.prepare("INSERT INTO calendar (id, access_code_hash, season_year) VALUES (1, ?, ?)").bind(await sha256(code), currentYear());
+    await statement.run();
   } catch {
     return json({ error: "Der Kalender wurde bereits eingerichtet." }, 409);
   }
@@ -80,15 +85,26 @@ async function saveAnswer(request: Request, env: Env): Promise<Response> {
   if (!session || !calendar) return json({ error: "Bitte melde dich zuerst an." }, 401);
   const body = await request.json() as { day?: number; content?: string };
   const content = body.content?.trim() ?? "";
-  const status = seasonStatus(calendar.season_year);
+  const status = seasonStatus(calendar, env);
   if (!Number.isInteger(body.day) || body.day !== status.writeDay) return json({ error: "Heute kann nur das heutige Türchen beantwortet werden." }, 400);
   if (!content || content.length > 2_000) return json({ error: "Schreibe eine Antwort mit höchstens 2.000 Zeichen." }, 400);
   await env.DB.prepare("INSERT INTO answers (day, author, content, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(day, author) DO UPDATE SET content = excluded.content, updated_at = CURRENT_TIMESTAMP").bind(body.day, session.partner, content).run();
   return json({ day: body.day, content });
 }
 
+async function setTestDay(request: Request, env: Env): Promise<Response> {
+  const session = await getSession(request, env);
+  const calendar = await getCalendar(env);
+  const body = await request.json() as { day?: number };
+  if (!session || !calendar) return json({ error: "Bitte melde dich zuerst an." }, 401);
+  if (!Number.isInteger(body.day) || !body.day || body.day < 1 || body.day > 25) return json({ error: "Wähle einen Testtag zwischen 1 und 24 oder den Zeitraum danach." }, 400);
+  await env.DB.prepare("UPDATE calendar SET test_day = ? WHERE id = 1").bind(body.day).run();
+  return json({ status: seasonStatus({ ...calendar, test_day: body.day }, env) });
+}
+
 async function getCalendar(env: Env) {
-  return env.DB.prepare("SELECT id, access_code_hash, season_year FROM calendar WHERE id = 1").first<Calendar>();
+  const columns = isTestEnvironment(env) ? "id, access_code_hash, season_year, test_day" : "id, access_code_hash, season_year";
+  return env.DB.prepare(`SELECT ${columns} FROM calendar WHERE id = 1`).first<Calendar>();
 }
 
 async function getSession(request: Request, env: Env): Promise<Session | null> {
@@ -105,7 +121,12 @@ async function issueSession(partner: Partner, env: Env) {
   return { partner, token, expiresAt };
 }
 
-function seasonStatus(seasonYear: number) {
+function seasonStatus(calendar: Calendar, env: Env) {
+  if (isTestEnvironment(env)) {
+    const testDay = calendar.test_day ?? 1;
+    return testDay === 25 ? { writeDay: null, revealThrough: 24, phase: "complete" } : { writeDay: testDay, revealThrough: testDay - 1, phase: "active" };
+  }
+  const seasonYear = calendar.season_year;
   const parts = berlinDate();
   if (parts.year < seasonYear || (parts.year === seasonYear && parts.month < 12)) return { writeDay: null, revealThrough: 0, phase: "before" };
   if (parts.year > seasonYear || parts.month > 12 || parts.day > 24) return { writeDay: null, revealThrough: 24, phase: "complete" };
@@ -119,6 +140,7 @@ function berlinDate() {
 }
 
 function currentYear() { return berlinDate().year; }
+function isTestEnvironment(env: Env) { return env.TEST_MODE === "true"; }
 function otherPartner(partner: Partner): Partner { return partner === "pia" ? "paul" : "pia"; }
 function isPartner(value: unknown): value is Partner { return value === "pia" || value === "paul"; }
 function json(body: unknown, status = 200) { return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS }); }

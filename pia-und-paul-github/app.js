@@ -1,4 +1,6 @@
 const API = (window.ADVENT_API_URL || "").replace(/\/$/, "");
+const TEST_MODE = window.ADVENT_DEVELOPER_TEST === true;
+const TOKEN_STORAGE_KEY = TEST_MODE ? "pia-paul-calendar-test-token" : "pia-paul-calendar-token";
 const app = document.querySelector("#app");
 const days = Array.from({ length: 24 }, (_, index) => index + 1);
 const prompts = {
@@ -12,7 +14,7 @@ let selectedPartner = "pia";
 function other(partner) { return partner === "pia" ? "paul" : "pia"; }
 function name(partner) { return partner === "pia" ? "Pia" : "Paul"; }
 function escape(value = "") { return String(value).replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]); }
-function token() { return localStorage.getItem("pia-paul-calendar-token") || ""; }
+function token() { return localStorage.getItem(TOKEN_STORAGE_KEY) || ""; }
 function configureMessage() { return `<main class="welcome-shell"><section class="welcome-card"><div class="heart-mark">♥</div><p class="eyebrow">Fast geschafft</p><h1>Die Verbindung fehlt noch.</h1><p class="intro">Trage zuerst die Adresse eures Cloudflare-Workers in <code>config.js</code> ein. Danach läuft der Kalender ohne Anmeldung.</p></section></main>`; }
 async function api(path, options = {}) {
   const headers = new Headers(options.headers || {});
@@ -27,7 +29,7 @@ async function load() {
   if (!API) { app.innerHTML = configureMessage(); return; }
   try {
     state = await api("/api/calendar");
-    if (!state.session) localStorage.removeItem("pia-paul-calendar-token");
+    if (!state.session) localStorage.removeItem(TOKEN_STORAGE_KEY);
     if (state.status?.writeDay) selectedDay = state.status.writeDay;
     else if (state.status?.revealThrough) selectedDay = state.status.revealThrough;
     render();
@@ -43,7 +45,7 @@ function renderAccess(message = "") {
   document.querySelectorAll("[data-person]").forEach((button) => button.addEventListener("click", () => { selectedPartner = button.dataset.person; renderAccess(); }));
   document.querySelector("#access-form").addEventListener("submit", async (event) => {
     event.preventDefault(); const submit = event.currentTarget.querySelector("button.primary-button"); submit.disabled = true;
-    try { const result = await api(state.configured ? "/api/session" : "/api/setup", { method: "POST", body: JSON.stringify({ partner: selectedPartner, accessCode: document.querySelector("#access-code").value }) }); localStorage.setItem("pia-paul-calendar-token", result.token); await load(); }
+    try { const result = await api(state.configured ? "/api/session" : "/api/setup", { method: "POST", body: JSON.stringify({ partner: selectedPartner, accessCode: document.querySelector("#access-code").value }) }); localStorage.setItem(TOKEN_STORAGE_KEY, result.token); await load(); }
     catch (error) { renderAccess(error.message); }
   });
 }
@@ -54,6 +56,8 @@ function renderCalendar(message = "") {
   const own = ownAnswers[selectedDay] || "";
   const received = partnerAnswers[selectedDay];
   const heading = status.phase === "before" ? `Bereit für den 1. Dezember ${seasonYear}` : status.phase === "complete" ? "Alle Türchen sind offen" : `Heute ist Türchen ${status.writeDay}`;
+  const testDay = status.phase === "complete" ? 25 : (status.writeDay || 1);
+  const developerControls = TEST_MODE ? `<section class="developer-panel"><p class="eyebrow">Entwickler-Testmodus</p><form id="test-day-form"><label for="test-day">Simulierter Kalendertag</label><div class="test-day-controls"><select id="test-day">${days.map((day) => `<option value="${day}" ${day === testDay ? "selected" : ""}>${day}. Dezember</option>`).join("")}<option value="25" ${testDay === 25 ? "selected" : ""}>Nach dem 24. Dezember</option></select><button class="quiet-button" type="submit">Tag übernehmen</button></div></form><p>Diese Steuerung gibt es nur in der separaten Testumgebung.</p></section>` : "";
   const doors = days.map((day) => { const unlocked = status.phase === "complete" || day <= (status.writeDay || 0); return `<button class="door ${unlocked ? "unlocked" : "locked"} ${selectedDay === day ? "active" : ""}" data-day="${day}" ${unlocked ? "" : "disabled"}><span>${day}</span>${partnerAnswers[day] ? "<b>♥</b>" : ownAnswers[day] ? "<em>•</em>" : ""}</button>`; }).join("");
   let body = `<div class="locked-copy"><h2>Noch ein wenig Geduld.</h2><p>Dieses Türchen wartet geduldig auf seinen Tag.</p></div>`;
   if (open) {
@@ -61,9 +65,10 @@ function renderCalendar(message = "") {
     const receivedBlock = received ? `<section class="received-note"><p class="note-label">Eine Nachricht von ${name(other(session.partner))}</p><p>${escape(received)}</p></section>` : (!editing ? `<p class="waiting-copy">${selectedDay <= status.revealThrough ? `${name(other(session.partner))} hat für dieses Türchen noch keine Antwort hinterlegt.` : "Die Antwort deines Partners wird morgen freigeschaltet."}</p>` : "");
     body = `<h2>Für dich, ${name(session.partner)}.</h2><p class="question">${prompts[session.partner][selectedDay - 1]}</p>${ownBlock}${receivedBlock}${message ? `<p class="save-message">${escape(message)}</p>` : ""}`;
   }
-  app.innerHTML = `<main class="app-shell"><header class="topbar"><div class="brand"><span class="mini-heart">♥</span><span>Pia <i>&</i> Paul</span></div><button class="quiet-button" id="signout">Abmelden</button></header><section class="hero-row"><div><p class="eyebrow">Adventskalender ${seasonYear}</p><h1>${heading}</h1></div><p class="hero-note">${status.phase === "active" ? "Deine Antwort bleibt bis Mitternacht nur für dich sichtbar." : status.phase === "before" ? "24 kleine Fragen warten auf euch." : "Ein Dezember voller kleiner Liebesbriefe."}</p></section><section class="calendar-layout"><nav class="door-grid" aria-label="Adventstürchen">${doors}</nav><article class="door-detail"><div class="detail-top"><p class="eyebrow">${open ? `Türchen ${selectedDay}` : "Bis bald"}</p><span class="status-pill">${open ? "♥ geöffnet" : "⌘ verschlossen"}</span></div>${body}</article></section></main>`;
+  app.innerHTML = `<main class="app-shell"><header class="topbar"><div class="brand"><span class="mini-heart">♥</span><span>Pia <i>&</i> Paul</span></div><button class="quiet-button" id="signout">Abmelden</button></header><section class="hero-row"><div><p class="eyebrow">Adventskalender ${seasonYear}</p><h1>${heading}</h1></div><p class="hero-note">${status.phase === "active" ? "Deine Antwort bleibt bis Mitternacht nur für dich sichtbar." : status.phase === "before" ? "24 kleine Fragen warten auf euch." : "Ein Dezember voller kleiner Liebesbriefe."}</p></section>${developerControls}<section class="calendar-layout"><nav class="door-grid" aria-label="Adventstürchen">${doors}</nav><article class="door-detail"><div class="detail-top"><p class="eyebrow">${open ? `Türchen ${selectedDay}` : "Bis bald"}</p><span class="status-pill">${open ? "♥ geöffnet" : "⌘ verschlossen"}</span></div>${body}</article></section></main>`;
   document.querySelectorAll("[data-day]").forEach((button) => button.addEventListener("click", () => { selectedDay = Number(button.dataset.day); renderCalendar(); }));
-  document.querySelector("#signout").addEventListener("click", () => { localStorage.removeItem("pia-paul-calendar-token"); state.session = null; render(); });
+  document.querySelector("#signout").addEventListener("click", () => { localStorage.removeItem(TOKEN_STORAGE_KEY); state.session = null; render(); });
+  const testForm = document.querySelector("#test-day-form"); if (testForm) testForm.addEventListener("submit", async (event) => { event.preventDefault(); const button = testForm.querySelector("button"); button.disabled = true; try { await api("/api/test/day", { method: "POST", body: JSON.stringify({ day: Number(document.querySelector("#test-day").value) }) }); await load(); } catch (error) { renderCalendar(error.message); } });
   const textarea = document.querySelector("#answer"); if (textarea) textarea.addEventListener("input", () => { document.querySelector("#count").textContent = `${textarea.value.length}/2000`; });
   const form = document.querySelector("#answer-form"); if (form) form.addEventListener("submit", async (event) => { event.preventDefault(); const button = form.querySelector("button"); button.disabled = true; try { const result = await api("/api/answers", { method: "PUT", body: JSON.stringify({ day: selectedDay, content: textarea.value }) }); state.ownAnswers[selectedDay] = result.content; renderCalendar("Gespeichert. Du kannst sie bis Mitternacht noch ändern."); } catch (error) { renderCalendar(error.message); } });
 }

@@ -1,0 +1,12 @@
+name = "adventskalender-dev"
+main = "../pia-und-paul-github/worker/index.ts"
+compatibility_date = "2026-10-03"
+
+[vars]
+TEST_MODE = "true"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "pia-und-paul-adventskalender-dev"
+database_id = "c2f19954-bd99-461c-ad0f-4356c1d9b868"
+migrations_dir = "migrations"
