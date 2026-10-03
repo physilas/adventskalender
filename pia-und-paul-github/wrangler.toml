@@ -1,0 +1,9 @@
+name = "pia-und-paul-adventskalender-api"
+main = "worker/index.ts"
+compatibility_date = "2026-10-04"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "pia-und-paul-adventskalender"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+migrations_dir = "migrations"
