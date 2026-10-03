@@ -1,4 +1,4 @@
-name = "pia-und-paul-adventskalender-api"
+name = "adventskalender"
 main = "worker/index.ts"
 compatibility_date = "2026-10-04"
 
