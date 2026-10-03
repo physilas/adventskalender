@@ -1,6 +1,6 @@
 name = "adventskalender"
 main = "worker/index.ts"
-compatibility_date = "2026-10-04"
+compatibility_date = "2026-10-03"
 
 [[d1_databases]]
 binding = "DB"
