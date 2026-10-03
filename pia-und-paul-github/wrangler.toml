@@ -5,5 +5,5 @@ compatibility_date = "2026-10-04"
 [[d1_databases]]
 binding = "DB"
 database_name = "pia-und-paul-adventskalender"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "39d1992c-80b6-48d9-bb74-8ed05da125d7"
 migrations_dir = "migrations"
