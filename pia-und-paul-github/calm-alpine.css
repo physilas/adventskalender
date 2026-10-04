@@ -13,6 +13,24 @@ body,
   background-color: #061523;
 }
 
+.welcome-card {
+  color: #16384f;
+  border-color: #d4e2e8;
+  background: #fcfeff;
+}
+.welcome-card .intro,
+.welcome-card label { color: #45677d; }
+.code-field {
+  color: #245b7c;
+  border-color: #a8c6d4;
+  background: #fff;
+}
+.code-field input {
+  color: #16384f;
+  caret-color: #16384f;
+}
+.code-field input::placeholder { color: #6b899a; opacity: 1; }
+
 .app-shell {
   background-image:
     linear-gradient(180deg, #03102166 0%, #061523a6 100%),
