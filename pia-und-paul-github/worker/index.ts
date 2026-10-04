@@ -5,7 +5,7 @@ export interface Env {
 
 type Partner = "pia" | "paul";
 type AnswerKind = "text" | "choice" | "choice-custom" | "ranking" | "image" | "audio" | "drawing" | "drawing-riddle" | "map" | "link";
-type Calendar = { id: number; access_code_hash: string; season_year: number; test_day?: number };
+type Calendar = { id: number; access_code_hash: string; recovery_code_hash?: string | null; season_year: number; test_day?: number };
 type Session = { partner: Partner };
 type AnswerRow = { day: number; content: string; kind?: string; payload?: string | null; updated_at: string };
 
@@ -30,6 +30,7 @@ async function route(request: Request, env: Env, url: URL): Promise<Response> {
   if (path === "/api/calendar" && request.method === "GET") return readCalendar(request, env);
   if (path === "/api/setup" && request.method === "POST") return setup(request, env);
   if (path === "/api/session" && request.method === "POST") return signIn(request, env);
+  if (path === "/api/recovery" && request.method === "POST") return recoverAccess(request, env);
   if (path === "/api/answers" && request.method === "PUT") return saveAnswer(request, env);
   if (path.startsWith("/api/answers/") && request.method === "DELETE") return retractAnswer(request, env, path);
   if (path === "/api/riddles/guess" && request.method === "POST") return checkRiddleGuess(request, env);
@@ -86,19 +87,36 @@ async function checkRiddleGuess(request: Request, env: Env): Promise<Response> {
 }
 
 async function setup(request: Request, env: Env): Promise<Response> {
-  const body = await request.json() as { partner?: Partner; accessCode?: string };
+  const body = await request.json() as { partner?: Partner; accessCode?: string; recoveryCode?: string };
   const code = body.accessCode?.trim() ?? "";
+  const recoveryCode = body.recoveryCode?.trim() ?? "";
   if (!isPartner(body.partner) || code.length < 6 || code.length > 80) return json({ error: "Wähle dich aus und verwende einen Schlüssel mit mindestens 6 Zeichen." }, 400);
+  if (recoveryCode.length < 10 || recoveryCode.length > 80) return json({ error: "Der Rettungscode muss zwischen 10 und 80 Zeichen lang sein." }, 400);
   if (await getCalendar(env)) return json({ error: "Der Kalender wurde bereits eingerichtet." }, 409);
   try {
     const statement = isTestEnvironment(env)
-      ? env.DB.prepare("INSERT INTO calendar (id, access_code_hash, season_year, test_day) VALUES (1, ?, ?, 1)").bind(await sha256(code), currentYear())
-      : env.DB.prepare("INSERT INTO calendar (id, access_code_hash, season_year) VALUES (1, ?, ?)").bind(await sha256(code), currentYear());
+      ? env.DB.prepare("INSERT INTO calendar (id, access_code_hash, recovery_code_hash, season_year, test_day) VALUES (1, ?, ?, ?, 1)").bind(await sha256(code), await sha256(recoveryCode), currentYear())
+      : env.DB.prepare("INSERT INTO calendar (id, access_code_hash, recovery_code_hash, season_year) VALUES (1, ?, ?, ?)").bind(await sha256(code), await sha256(recoveryCode), currentYear());
     await statement.run();
   } catch {
     return json({ error: "Der Kalender wurde bereits eingerichtet." }, 409);
   }
   return json(await issueSession(body.partner, env), 201);
+}
+
+async function recoverAccess(request: Request, env: Env): Promise<Response> {
+  const body = await request.json() as { recoveryCode?: string; accessCode?: string };
+  const calendar = await getCalendar(env);
+  const recoveryCode = body.recoveryCode?.trim() ?? "";
+  const accessCode = body.accessCode?.trim() ?? "";
+  if (!calendar) return json({ error: "Der Kalender wird noch eingerichtet." }, 409);
+  if (accessCode.length < 6 || accessCode.length > 80) return json({ error: "Der neue gemeinsame Schlüssel muss zwischen 6 und 80 Zeichen lang sein." }, 400);
+  if (!calendar.recovery_code_hash || await sha256(recoveryCode) !== calendar.recovery_code_hash) return json({ error: "Der Rettungscode stimmt nicht." }, 401);
+  await Promise.all([
+    env.DB.prepare("UPDATE calendar SET access_code_hash = ? WHERE id = 1").bind(await sha256(accessCode)).run(),
+    env.DB.prepare("DELETE FROM sessions").run(),
+  ]);
+  return json({ recovered: true });
 }
 
 async function signIn(request: Request, env: Env): Promise<Response> {
@@ -193,7 +211,7 @@ async function setTestDay(request: Request, env: Env): Promise<Response> {
 }
 
 async function getCalendar(env: Env) {
-  const columns = isTestEnvironment(env) ? "id, access_code_hash, season_year, test_day" : "id, access_code_hash, season_year";
+  const columns = isTestEnvironment(env) ? "id, access_code_hash, recovery_code_hash, season_year, test_day" : "id, access_code_hash, recovery_code_hash, season_year";
   return env.DB.prepare(`SELECT ${columns} FROM calendar WHERE id = 1`).first<Calendar>();
 }
 

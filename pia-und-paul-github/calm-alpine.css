@@ -19,7 +19,8 @@ body,
   background: #fcfeff;
 }
 .welcome-card .intro,
-.welcome-card label { color: #45677d; }
+.welcome-card label,
+.welcome-card .field-hint { color: #45677d; }
 .code-field {
   color: #245b7c;
   border-color: #a8c6d4;
