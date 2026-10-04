@@ -1,0 +1,131 @@
+:root {
+  --ink: #16384f;
+  --muted: #607d8e;
+  --wine: #245b7c;
+  --wine-dark: #173f59;
+  --paper: #f8fbfc;
+  --cream: #eef5f7;
+  --line: #d3e2e8;
+}
+
+body,
+.app-shell {
+  background: #f8fbfc;
+}
+
+.app-shell {
+  background-image: none;
+}
+
+.topbar,
+.hero-row,
+.view-switch,
+.calendar-layout,
+.legend,
+.developer-panel {
+  width: min(100%, 68rem);
+}
+
+.topbar { padding-top: 1.35rem; }
+.hero-row { margin-top: clamp(1.8rem, 4vw, 3.25rem); margin-bottom: 1.35rem; }
+.hero-note { color: #6d8796; }
+.view-switch { border-color: #d4e2e8; background: #f2f7f9; box-shadow: none; }
+.view-switch button { color: #648091; }
+.view-switch button.selected { background: #245b7c; box-shadow: none; }
+
+.calendar-layout--calendar { width: min(100%, 48rem); }
+.door-grid { gap: .72rem; }
+.door.calendar-door,
+.door.workshop-door {
+  border-color: #c5dce6;
+  background: linear-gradient(180deg, #cce9f2 0%, #8bc1d5 58%, #578fa9 100%);
+  box-shadow: none;
+}
+
+.door.calendar-door:hover,
+.door.workshop-door:hover {
+  border-color: #5b94ad;
+  transform: translateY(-1px);
+}
+
+.door.calendar-door.new,
+.door.calendar-door.seen,
+.door.calendar-door.missing,
+.door.workshop-door.complete,
+.door.workshop-door.today,
+.door.workshop-door.overdue {
+  border-color: #c5dce6;
+  border-style: solid;
+  background: linear-gradient(180deg, #cce9f2 0%, #8bc1d5 58%, #578fa9 100%);
+  box-shadow: none;
+}
+
+.door.calendar-door.new { border-color: #4e89a4; }
+.door.calendar-door.seen,
+.door.workshop-door.complete { opacity: .78; }
+.door.calendar-door.missing,
+.door.workshop-door.overdue { filter: saturate(.72); opacity: .7; }
+.door.workshop-door.today { border-color: #245b7c; }
+.door.workshop-door.upcoming,
+.door.locked { background: linear-gradient(180deg, #e5f0f4 0%, #c7dce5 100%); }
+.door.active { border-color: #245b7c !important; background: linear-gradient(180deg, #9dd0df 0%, #4d88a5 100%) !important; box-shadow: 0 0 0 2px #d9edf3 !important; }
+
+.mountain-range { height: 77%; opacity: 1; }
+.mountain-range .mountain-far,
+.mountain-range .mountain-mid,
+.mountain-range .mountain-far-contour,
+.mountain-range .mountain-mid-contour,
+.mountain-range .mountain-front-contour { display: none; }
+.mountain-range .mountain-front { fill: #fff; }
+.door.locked .mountain-range { opacity: .44; }
+
+.door > span {
+  top: .58rem;
+  color: #fff;
+  font-family: ui-rounded, "Avenir Next Rounded", "Trebuchet MS", sans-serif;
+  font-weight: 700;
+  text-shadow: 0 1px 3px #214e6880;
+}
+
+.door > b {
+  right: .42rem;
+  bottom: .32rem;
+  color: #f9fcfd;
+  text-shadow: none;
+}
+
+.brand,
+.eyebrow,
+.quiet-button,
+.view-switch button,
+.status-pill,
+.answer-kind,
+.legend,
+.note-label,
+.modal-close {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.door-detail,
+.calendar-modal .door-detail {
+  border-color: #d4e2e8;
+  background: #fcfeff;
+  box-shadow: 0 10px 28px #365f7412;
+}
+
+.calendar-modal {
+  background: #eaf2f5e8;
+  backdrop-filter: none;
+}
+
+.modal-close { color: #245b7c; background: #edf6f8; }
+.status-pill,
+.answer-kind { color: #356d88; background: #e9f4f7; }
+.received-note { border-color: #d5e5eb; background: #f3f8fa; }
+.received-map { border-color: #d2e2e8; background: #eaf3f6; }
+.calendar-legend { color: #78909e; }
+
+@media (max-width: 700px) {
+  .calendar-shell .view-switch { background: #f1f6f8; }
+  .calendar-shell .calendar-layout--calendar .door-grid { gap: .48rem; }
+}
