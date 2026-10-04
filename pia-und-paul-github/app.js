@@ -77,7 +77,7 @@ let selectedWorkshopDay = 1;
 let activeView = "calendar";
 let calendarDetailOpen = false;
 let selectedPartner = "pia";
-let recoveryMode = false;
+let recoveryMode = new URLSearchParams(window.location.search).get("recovery") === "1";
 let mapPicker = null;
 let mapLocation = null;
 let recorder = null;
@@ -191,15 +191,19 @@ function renderAccess(message = "") {
   const setup = !state.configured;
   const recovering = !setup && recoveryMode;
   const personSwitch = `<fieldset><legend>Ich bin …</legend><div class="person-switch"><button type="button" data-person="pia" class="${selectedPartner === "pia" ? "selected" : ""}">Pia</button><button type="button" data-person="paul" class="${selectedPartner === "paul" ? "selected" : ""}">Paul</button></div></fieldset>`;
-  const standardForm = `${personSwitch}<label for="access-code">Gemeinsamer Schlüssel</label><div class="code-field">⌘ <input id="access-code" type="password" minlength="6" maxlength="80" autocomplete="current-password" placeholder="Mindestens 6 Zeichen" required></div>${setup ? `<label for="recovery-code">Dein Rettungscode</label><div class="code-field">✦ <input id="recovery-code" type="password" minlength="10" maxlength="80" autocomplete="new-password" placeholder="Mindestens 10 Zeichen" required></div><p class="field-hint">Nur für dich: Bewahre ihn in deinem Passwortmanager auf und teile ihn nicht mit Pia oder Paul.</p>` : ""}<button class="primary-button">${setup ? "Kalender anlegen" : "Kalender öffnen"}</button>${!setup ? '<button class="quiet-button" type="button" id="recover-access">Schlüssel vergessen? Rettungscode verwenden</button>' : ""}`;
+  const standardForm = `${personSwitch}<label for="access-code">Gemeinsamer Schlüssel</label><div class="code-field">⌘ <input id="access-code" type="password" minlength="6" maxlength="80" autocomplete="current-password" placeholder="Mindestens 6 Zeichen" required></div>${setup ? `<label for="recovery-code">Dein Rettungscode</label><div class="code-field">✦ <input id="recovery-code" type="password" minlength="10" maxlength="80" autocomplete="new-password" placeholder="Mindestens 10 Zeichen" required></div><p class="field-hint">Nur für dich: Bewahre ihn in deinem Passwortmanager auf und teile ihn nicht mit Pia oder Paul.</p>` : ""}<button class="primary-button">${setup ? "Kalender anlegen" : "Kalender öffnen"}</button>${!setup ? '<button class="quiet-button" type="button" id="recover-access">Schlüssel vergessen? Hilfe anfragen</button>' : ""}`;
   const recoveryForm = `<label for="access-code">Neuer gemeinsamer Schlüssel</label><div class="code-field">⌘ <input id="access-code" type="password" minlength="6" maxlength="80" autocomplete="new-password" placeholder="Mindestens 6 Zeichen" required></div><label for="recovery-code">Dein Rettungscode</label><div class="code-field">✦ <input id="recovery-code" type="password" minlength="10" maxlength="80" autocomplete="current-password" placeholder="Dein privater Rettungscode" required></div><p class="field-hint">Der neue gemeinsame Schlüssel ersetzt den alten, eure Inhalte bleiben erhalten.</p><button class="primary-button">Neuen Schlüssel setzen</button><button class="quiet-button" type="button" id="cancel-recovery">Zurück zum Login</button>`;
   const title = setup ? "Euren Kalender einrichten" : recovering ? "Zugang wiederherstellen" : "Willkommen zurück";
   const intro = setup ? "Lege einen gemeinsamen Schlüssel und deinen privaten Rettungscode fest." : recovering ? "Setze mit deinem Rettungscode einen neuen gemeinsamen Schlüssel. Alle bisherigen Sitzungen werden dabei abgemeldet." : "Wähle deinen Namen und öffne euren gemeinsamen Adventskalender.";
   const fineprint = setup ? "✦ Der Rettungscode wird nicht lesbar gespeichert und kann später nur den gemeinsamen Schlüssel ersetzen." : "";
   app.innerHTML = `<main class="welcome-shell"><section class="welcome-card"><div class="heart-mark">♥</div><p class="eyebrow">Pia & Paul</p><h1>${title}</h1><p class="intro">${intro}</p><form class="access-form" id="access-form">${recovering ? recoveryForm : standardForm}${message ? `<p class="form-message">${escape(message)}</p>` : ""}</form>${fineprint ? `<p class="fineprint">${fineprint}</p>` : ""}</section></main>`;
   document.querySelectorAll("[data-person]").forEach((button) => button.addEventListener("click", () => { selectedPartner = button.dataset.person; renderAccess(); }));
-  document.querySelector("#recover-access")?.addEventListener("click", () => { recoveryMode = true; renderAccess(); });
-  document.querySelector("#cancel-recovery")?.addEventListener("click", () => { recoveryMode = false; renderAccess(); });
+  document.querySelector("#recover-access")?.addEventListener("click", () => renderAccess("Wendet euch an die Person, von der ihr den Kalender bekommen habt. Sie kann euch mit einem neuen gemeinsamen Schlüssel helfen."));
+  document.querySelector("#cancel-recovery")?.addEventListener("click", () => {
+    recoveryMode = false;
+    history.replaceState({}, "", window.location.pathname);
+    renderAccess();
+  });
   document.querySelector("#access-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const submit = event.currentTarget.querySelector("button.primary-button");
@@ -209,6 +213,7 @@ function renderAccess(message = "") {
         await api("/api/recovery", { method: "POST", body: JSON.stringify({ accessCode: document.querySelector("#access-code").value, recoveryCode: document.querySelector("#recovery-code").value }) });
         localStorage.removeItem(TOKEN_STORAGE_KEY);
         recoveryMode = false;
+        history.replaceState({}, "", window.location.pathname);
         renderAccess("Neuer Schlüssel gesetzt. Pia und Paul können sich jetzt damit anmelden.");
         return;
       }
