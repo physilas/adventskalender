@@ -4,6 +4,12 @@ const TOKEN_STORAGE_KEY = TEST_MODE ? "pia-paul-calendar-test-token" : "pia-paul
 const app = document.querySelector("#app");
 const days = Array.from({ length: 24 }, (_, index) => index + 1);
 const question = (kind, prompt, options = [], hint = "") => ({ kind, prompt, options, hint });
+const paulHouseRanking = [
+  { id: "waldhuette", label: "Die Berghütte am Waldrand", image: "https://images.unsplash.com/photo-1698213248549-b116da488294?auto=format&fit=crop&w=900&q=82" },
+  { id: "reetdach", label: "Das reetgedeckte Landhaus", image: "https://images.unsplash.com/photo-1682516086739-c3fbf844529b?auto=format&fit=crop&w=900&q=82" },
+  { id: "steinhaus", label: "Das Steinhäuschen mit wildem Garten", image: "https://images.unsplash.com/photo-1688396538097-af54bb314ab6?auto=format&fit=crop&w=900&q=82" },
+  { id: "holzhaus", label: "Das große Holzhaus in den Bergen", image: "https://images.unsplash.com/photo-1506974210756-8e1b8985d348?auto=format&fit=crop&w=900&q=82" },
+];
 const prompts = {
   pia: [
     question("text", "Woran merkst du, dass Paul dich wirklich kennt?"),
@@ -14,7 +20,7 @@ const prompts = {
     question("audio", "Nimm eine kurze Sprachnachricht auf: Wofür bist du Paul heute dankbar?"),
     question("link", "Schick Paul ein Lied, das gerade nach euch klingt.", [], "Ein Spotify-, YouTube- oder anderer Link."),
     question("text", "Welche Stärke von Paul bewunderst du, auch wenn du es ihm viel zu selten sagst?"),
-    question("choice", "Welches Abenteuer passt am besten zu euch beiden?", ["Ein Wochenende am Meer", "Eine Städtereise", "Ein Bergausflug", "Ein gemütlicher Tag zuhause"]),
+    question("ranking", "Wie gut kennst du Paul? In welchem dieser Häuser würde er wohl am liebsten wohnen? Erstelle ein Ranking.", paulHouseRanking, "Verteile jeden Platz genau einmal – Platz 1 ist sein Traumhaus."),
     question("image", "Fotografiere etwas aus eurem Alltag, das dich an Paul erinnert."),
     question("map", "Welchen Ort möchtet ihr unbedingt einmal zusammen besuchen?"),
     question("drawing", "Zeichne Paul ein kleines Symbol für etwas, das euch zu einem guten Team macht."),
@@ -110,7 +116,7 @@ function lockedQuip(day, partner, year) {
   return quips[(position + offset) % quips.length];
 }
 function configureMessage() { return `<main class="welcome-shell"><section class="welcome-card"><div class="heart-mark">♥</div><p class="eyebrow">Fast geschafft</p><h1>Die Verbindung fehlt noch.</h1><p class="intro">Trage zuerst die Adresse eures Cloudflare-Workers in <code>config.js</code> ein.</p></section></main>`; }
-function kindLabel(kind) { return ({ text: "Text", choice: "Auswahl", image: "Foto", audio: "Sprachnachricht", drawing: "Zeichnung", map: "Ort", link: "Link" })[kind] || "Antwort"; }
+function kindLabel(kind) { return ({ text: "Text", choice: "Auswahl", ranking: "Ranking", image: "Foto", audio: "Sprachnachricht", drawing: "Zeichnung", map: "Ort", link: "Link" })[kind] || "Antwort"; }
 function mediaKey(answer) { return answer?.payload?.mediaKey || ""; }
 function seededValue(seed) { return Math.abs(Math.sin(seed * 127.1 + 311.7) * 43758.5453) % 1; }
 function triangularFourier(value, modes = 9) {
@@ -230,12 +236,13 @@ function renderCalendar() {
   const partner = other(session.partner);
   const prompt = prompts[partner][selectedCalendarDay - 1];
   const answer = partnerAnswers[selectedCalendarDay];
-  const detail = !unlocked ? `<div class="locked-copy"><h2>${lockedQuip(selectedCalendarDay, session.partner, state.seasonYear)}</h2><p>Dieses Türchen öffnet sich am ${selectedCalendarDay}. Dezember. Bis dahin bleibt die Überraschung ganz tapfer geheim.</p></div>` : `<p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${answer ? renderAnswer(answer) : `<section class="waiting-copy"><span>◷</span><p>${name(partner)} hat dieses Türchen noch nicht gefüllt. Vielleicht kommt die Überraschung etwas später.</p></section>`}`;
+  const detail = !unlocked ? `<div class="locked-copy"><h2>${lockedQuip(selectedCalendarDay, session.partner, state.seasonYear)}</h2><p>Dieses Türchen öffnet sich am ${selectedCalendarDay}. Dezember. Bis dahin bleibt die Überraschung ganz tapfer geheim.</p></div>` : `<p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${answer ? renderAnswer(answer, prompt) : `<section class="waiting-copy"><span>◷</span><p>${name(partner)} hat dieses Türchen noch nicht gefüllt. Vielleicht kommt die Überraschung etwas später.</p></section>`}`;
   const modal = calendarDetailOpen ? `<section class="calendar-modal" role="dialog" aria-modal="true" aria-labelledby="door-title"><article class="door-detail"><button class="modal-close" type="button" aria-label="Türchen schließen">×</button><div class="detail-top"><p class="eyebrow">${unlocked ? `Türchen ${selectedCalendarDay}` : "Bis bald"}</p><span class="status-pill">${unlocked ? "♥ für dich" : "🔒 verschlossen"}</span></div><div id="door-title">${detail}</div></article></section>` : "";
   return `<section class="calendar-layout calendar-layout--calendar"><nav class="door-grid" aria-label="Deine Adventstürchen">${doors}</nav></section>${modal}<p class="legend calendar-legend"><span class="legend-new">♥</span> neue Überraschung <span class="legend-seen">✓</span> schon angesehen <span class="legend-missing">◷</span> noch offen</p>`;
 }
 
-function renderAnswer(answer) {
+function renderAnswer(answer, prompt) {
+  if (answer.kind === "ranking" && prompt?.options) return renderRankingAnswer(answer, prompt);
   if (answer.kind === "image" || answer.kind === "drawing") return `<section class="received-note media-answer"><p class="note-label">${answer.kind === "drawing" ? "Eine Zeichnung für dich" : "Ein Foto für dich"}</p><div class="media-slot image-slot" data-media-kind="image" data-media-key="${escape(mediaKey(answer))}">Wird geladen …</div></section>`;
   if (answer.kind === "audio") return `<section class="received-note media-answer"><p class="note-label">Eine Sprachnachricht für dich</p><div class="media-slot audio-slot" data-media-kind="audio" data-media-key="${escape(mediaKey(answer))}">Wird geladen …</div></section>`;
   if (answer.kind === "map") {
@@ -245,6 +252,21 @@ function renderAnswer(answer) {
   }
   if (answer.kind === "link") return `<section class="received-note"><p class="note-label">Ein Link für dich</p><a class="shared-link" href="${escape(answer.content)}" target="_blank" rel="noopener">${escape(answer.content)} ↗</a></section>`;
   return `<section class="received-note"><p class="note-label">${answer.kind === "choice" ? "Die Wahl von " + name(other(state.session.partner)) : "Eine Nachricht für dich"}</p><p>${escape(answer.content)}</p></section>`;
+}
+
+function rankingOrder(content) {
+  try {
+    const order = JSON.parse(content);
+    return Array.isArray(order) && order.every((id) => typeof id === "string") ? order : [];
+  } catch { return []; }
+}
+
+function renderRankingAnswer(answer, prompt) {
+  const options = prompt.options || [];
+  const order = rankingOrder(answer.content);
+  const ranked = order.map((id) => options.find((option) => option.id === id)).filter(Boolean);
+  if (ranked.length !== options.length) return `<section class="received-note"><p class="note-label">Das Ranking von ${name(other(state.session.partner))}</p><p>Dieses Ranking wird gerade noch sortiert.</p></section>`;
+  return `<section class="received-note ranking-answer"><p class="note-label">Das Ranking von ${name(other(state.session.partner))}</p><div class="ranking-result">${ranked.map((option, index) => `<article><span>${index + 1}</span><img src="${escape(option.image)}" alt="${escape(option.label)}"><p>${escape(option.label)}</p></article>`).join("")}</div></section>`;
 }
 
 function bindCalendar() {
@@ -281,6 +303,7 @@ function renderEditor(prompt, answer) {
   const old = answer || {};
   if (prompt.kind === "text") return `<form class="answer-form" id="answer-form"><label for="answer">Deine Antwort für ${name(other(state.session.partner))}</label><textarea id="answer" maxlength="2000" placeholder="Schreib, was dir gerade im Herzen liegt …" required>${escape(old.content || "")}</textarea><div class="answer-footer"><span id="count">${(old.content || "").length}/2000</span><button class="primary-button">Antwort speichern</button></div></form>`;
   if (prompt.kind === "choice") return `<form class="answer-form" id="answer-form"><fieldset class="choice-list"><legend>Deine Wahl für ${name(other(state.session.partner))}</legend>${prompt.options.map((option) => `<label class="choice-option"><input type="radio" name="choice" value="${escape(option)}" ${old.content === option ? "checked" : ""} required><span>${escape(option)}</span></label>`).join("")}</fieldset><button class="primary-button">Antwort speichern</button></form>`;
+  if (prompt.kind === "ranking") return renderRankingEditor(prompt, old);
   if (prompt.kind === "link") return `<form class="answer-form" id="answer-form"><label for="answer">Link für ${name(other(state.session.partner))}</label><input class="answer-input" id="answer" type="url" placeholder="https://…" value="${escape(old.content || "")}" required><p class="field-hint">Spotify, YouTube, Mediathek oder jeder andere Link – ohne Konto-Verknüpfung.</p><button class="primary-button">Link speichern</button></form>`;
   if (prompt.kind === "image") return renderMediaEditor("image", old, "Foto auswählen", "Ein neues Foto ersetzt das bisherige.");
   if (prompt.kind === "audio") return renderMediaEditor("audio", old, "Audiodatei auswählen", "Oder nimm direkt hier eine kurze Nachricht auf.");
@@ -290,6 +313,12 @@ function renderEditor(prompt, answer) {
     return `<form class="answer-form" id="answer-form"><label for="place-label">Wie möchtest du diesen Ort nennen?</label><input class="answer-input" id="place-label" maxlength="200" placeholder="Zum Beispiel: Unser Lieblingscafé" value="${escape(location.label || "")}" required><div class="map-search"><input class="answer-input" id="map-search" type="search" placeholder="Ort oder Adresse suchen"><button type="button" class="quiet-button" id="search-map">Suchen</button></div><div id="map-search-results" class="map-search-results" aria-live="polite"></div><div id="map-picker" class="map-picker"></div><p class="field-hint" id="map-coordinates">Tippe auf die Karte, um den Ort festzulegen.</p><button type="button" class="quiet-button locate-button" id="locate-me">Meinen aktuellen Standort verwenden</button><button class="primary-button">Ort speichern</button></form>`;
   }
   return "";
+}
+
+function renderRankingEditor(prompt, old) {
+  const order = rankingOrder(old.content || "");
+  const positions = Object.fromEntries(order.map((id, index) => [id, index + 1]));
+  return `<form class="answer-form ranking-form" id="answer-form"><fieldset><legend>Dein Ranking für ${name(other(state.session.partner))}</legend><div class="ranking-grid">${prompt.options.map((option) => `<article class="ranking-card"><img src="${escape(option.image)}" alt="${escape(option.label)}"><h3>${escape(option.label)}</h3><label for="rank-${escape(option.id)}">Platz</label><select id="rank-${escape(option.id)}" data-ranking-option="${escape(option.id)}" required><option value="">–</option>${[1, 2, 3, 4].map((place) => `<option value="${place}" ${positions[option.id] === place ? "selected" : ""}>${place}</option>`).join("")}</select></article>`).join("")}</div></fieldset><p class="field-hint">Jeder Platz darf genau einmal vergeben werden.</p><button class="primary-button">Ranking speichern</button></form>`;
 }
 
 function renderMediaEditor(kind, old, label, hint) {
@@ -337,6 +366,12 @@ async function saveWorkshopAnswer(prompt, previous) {
   let payload = null;
   if (prompt.kind === "text" || prompt.kind === "link") content = document.querySelector("#answer").value;
   if (prompt.kind === "choice") content = document.querySelector('input[name="choice"]:checked')?.value || "";
+  if (prompt.kind === "ranking") {
+    const ranked = [...document.querySelectorAll("[data-ranking-option]")].map((select) => ({ id: select.dataset.rankingOption, place: Number(select.value) }));
+    const places = ranked.map((entry) => entry.place);
+    if (ranked.length !== 4 || places.some((place) => !place) || new Set(places).size !== 4) throw new Error("Bitte vergib jeden Platz von 1 bis 4 genau einmal.");
+    content = JSON.stringify(ranked.sort((left, right) => left.place - right.place).map((entry) => entry.id));
+  }
   if (prompt.kind === "map") {
     if (!mapLocation) throw new Error("Bitte wähle einen Punkt auf der Karte.");
     const label = document.querySelector("#place-label").value.trim();

@@ -4,13 +4,13 @@ export interface Env {
 }
 
 type Partner = "pia" | "paul";
-type AnswerKind = "text" | "choice" | "image" | "audio" | "drawing" | "map" | "link";
+type AnswerKind = "text" | "choice" | "ranking" | "image" | "audio" | "drawing" | "map" | "link";
 type Calendar = { id: number; access_code_hash: string; season_year: number; test_day?: number };
 type Session = { partner: Partner };
 type AnswerRow = { day: number; content: string; kind?: string; payload?: string | null; updated_at: string };
 
 const JSON_HEADERS = { "content-type": "application/json; charset=UTF-8" };
-const ANSWER_KINDS: AnswerKind[] = ["text", "choice", "image", "audio", "drawing", "map", "link"];
+const ANSWER_KINDS: AnswerKind[] = ["text", "choice", "ranking", "image", "audio", "drawing", "map", "link"];
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -191,7 +191,13 @@ function answerFromRow(row: AnswerRow) { return { kind: isAnswerKind(row.kind) ?
 function normalisePayload(payload: unknown) { return payload && typeof payload === "object" && !Array.isArray(payload) && JSON.stringify(payload).length <= 4_000 ? payload as Record<string, unknown> : null; }
 function parsePayload(value?: string | null) { try { return value ? JSON.parse(value) : null; } catch { return null; } }
 function isValidAnswer(kind: AnswerKind, content: string, payload: Record<string, unknown> | null) {
-  if (["text", "choice", "link"].includes(kind)) {
+  if (["text", "choice", "ranking", "link"].includes(kind)) {
+    if (kind === "ranking") {
+      try {
+        const ranking = JSON.parse(content);
+        return Array.isArray(ranking) && ranking.length === 4 && ranking.every((id) => typeof id === "string") && new Set(ranking).size === 4;
+      } catch { return false; }
+    }
     if (kind !== "link") return true;
     try { const url = new URL(content); return url.protocol === "https:" || url.protocol === "http:"; } catch { return false; }
   }
