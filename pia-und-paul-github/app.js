@@ -97,9 +97,11 @@ function alpineRidge(day, baseline, height, layer, className) {
     const x = index / 144;
     // Two deliberately dominant masses make this read as a mountain range. The
     // smaller Fourier modes only roughen the skyline; they no longer compete with it.
-    const primaryPhase = seededValue(day * 31 + layer * 17);
+    const primaryFrequency = .49 + layer * .025;
+    // Keep the main summit near the centre; only a small seeded offset varies it.
+    const primaryPhase = .25 - primaryFrequency * .5 + (seededValue(day * 31 + layer * 17) - .5) * .05;
     const secondaryPhase = seededValue(day * 31 + layer * 17 + 11);
-    const primary = .92 * Math.pow(triangularFourier(x * (.49 + layer * .025) + primaryPhase), 2.25);
+    const primary = .92 * Math.pow(triangularFourier(x * primaryFrequency + primaryPhase), 2.25);
     const secondary = .31 * Math.pow(triangularFourier(x * (1.02 + layer * .045) + secondaryPhase), 4.5);
     const foothills = .07 * Math.pow(triangularFourier(x * (1.95 + layer * .09) + seededValue(day + 47)), 5.5);
     const rockNoise = .014 * Math.sin(Math.PI * 2 * (x * (9 + layer) + seededValue(day + 91)))

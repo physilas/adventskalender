@@ -38,7 +38,7 @@ body,
 .door.calendar-door,
 .door.workshop-door {
   border-color: #c5dce6;
-  background: linear-gradient(180deg, #cce9f2 0%, #8bc1d5 58%, #578fa9 100%);
+  background: linear-gradient(180deg, #b4dfef 0%, #6aaec9 58%, #397a9d 100%);
   box-shadow: none;
 }
 
@@ -56,19 +56,19 @@ body,
 .door.workshop-door.overdue {
   border-color: #c5dce6;
   border-style: solid;
-  background: linear-gradient(180deg, #cce9f2 0%, #8bc1d5 58%, #578fa9 100%);
+  background: linear-gradient(180deg, #b4dfef 0%, #6aaec9 58%, #397a9d 100%);
   box-shadow: none;
 }
 
 .door.calendar-door.new { border-color: #4e89a4; }
 .door.calendar-door.seen,
-.door.workshop-door.complete { opacity: .78; }
+.door.workshop-door.complete { opacity: .92; }
 .door.calendar-door.missing,
-.door.workshop-door.overdue { filter: saturate(.72); opacity: .7; }
+.door.workshop-door.overdue { filter: saturate(.86); opacity: .84; }
 .door.workshop-door.today { border-color: #245b7c; }
 .door.workshop-door.upcoming,
-.door.locked { background: linear-gradient(180deg, #e5f0f4 0%, #c7dce5 100%); }
-.door.active { border-color: #245b7c !important; background: linear-gradient(180deg, #9dd0df 0%, #4d88a5 100%) !important; box-shadow: 0 0 0 2px #d9edf3 !important; }
+.door.locked { background: linear-gradient(180deg, #dceff5 0%, #9bc5d6 100%); }
+.door.active { border-color: #245b7c !important; background: linear-gradient(180deg, #91cddd 0%, #2e6d91 100%) !important; box-shadow: 0 0 0 2px #d9edf3 !important; }
 
 .mountain-range { height: 77%; opacity: 1; }
 .mountain-range .mountain-far,
