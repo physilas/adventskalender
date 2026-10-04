@@ -68,6 +68,9 @@ let mapPicker = null;
 let mapLocation = null;
 let recorder = null;
 let recordedAudio = null;
+let recordedAudioUrl = null;
+let recordingTimer = null;
+let mediaPreviewUrls = new Map();
 let drawingCanvas = null;
 let drawingDirty = false;
 
@@ -212,10 +215,10 @@ function renderEditor(prompt, answer) {
   if (prompt.kind === "link") return `<form class="answer-form" id="answer-form"><label for="answer">Link für ${name(other(state.session.partner))}</label><input class="answer-input" id="answer" type="url" placeholder="https://…" value="${escape(old.content || "")}" required><p class="field-hint">Spotify, YouTube, Mediathek oder jeder andere Link – ohne Konto-Verknüpfung.</p><button class="primary-button">Link speichern</button></form>`;
   if (prompt.kind === "image") return renderMediaEditor("image", old, "Foto auswählen", "Ein neues Foto ersetzt das bisherige.");
   if (prompt.kind === "audio") return renderMediaEditor("audio", old, "Audiodatei auswählen", "Oder nimm direkt hier eine kurze Nachricht auf.");
-  if (prompt.kind === "drawing") return `<form class="answer-form" id="answer-form"><label>Deine Zeichnung für ${name(other(state.session.partner))}</label>${old.payload?.mediaKey ? `<div class="existing-media" data-media-kind="image" data-media-key="${escape(old.payload.mediaKey)}">Bisherige Zeichnung wird geladen …</div>` : ""}<canvas id="drawing-canvas" width="900" height="560" aria-label="Zeichenfläche"></canvas><div class="draw-tools"><div class="draw-palette" aria-label="Stiftfarbe wählen"><button type="button" class="color-swatch selected" data-color="#941f42" style="--swatch:#941f42" aria-label="Rot"></button><button type="button" class="color-swatch" data-color="#e8b65e" style="--swatch:#e8b65e" aria-label="Gelb"></button><button type="button" class="color-swatch" data-color="#4d8560" style="--swatch:#4d8560" aria-label="Grün"></button><button type="button" class="color-swatch" data-color="#a7d8a5" style="--swatch:#a7d8a5" aria-label="Hellgrün"></button><button type="button" class="color-swatch" data-color="#3f6cae" style="--swatch:#3f6cae" aria-label="Blau"></button><button type="button" class="color-swatch" data-color="#91cde2" style="--swatch:#91cde2" aria-label="Hellblau"></button><button type="button" class="color-swatch" data-color="#261923" style="--swatch:#261923" aria-label="Schwarz"></button><button type="button" class="color-swatch white" data-color="#fffaf5" style="--swatch:#fffaf5" aria-label="Weiß"></button><button type="button" class="color-swatch" data-color="#e7b98d" style="--swatch:#e7b98d" aria-label="Hautfarbe"></button><button type="button" class="color-swatch" data-color="#b77b52" style="--swatch:#b77b52" aria-label="Hellbraun"></button><button type="button" class="eraser-button" id="eraser" aria-label="Radierer">⌫</button></div><button type="button" class="quiet-button" id="clear-drawing">Zeichnung löschen</button></div><p class="field-hint">Mit dem Finger oder der Maus malen. Der Radierer entfernt nur einzelne Striche.</p><button class="primary-button">Zeichnung speichern</button></form>`;
+  if (prompt.kind === "drawing") return `<form class="answer-form" id="answer-form"><label>Deine Zeichnung für ${name(other(state.session.partner))}</label>${old.payload?.mediaKey ? `<div class="existing-media" data-media-kind="image" data-media-key="${escape(old.payload.mediaKey)}">Bisherige Zeichnung wird geladen …</div>` : ""}<canvas id="drawing-canvas" width="900" height="560" aria-label="Zeichenfläche"></canvas><div class="draw-tools"><div class="draw-palette" aria-label="Stiftfarbe wählen"><button type="button" class="color-swatch selected" data-color="#941f42" style="--swatch:#941f42" aria-label="Rot"></button><button type="button" class="color-swatch" data-color="#e8b65e" style="--swatch:#e8b65e" aria-label="Gelb"></button><button type="button" class="color-swatch" data-color="#4d8560" style="--swatch:#4d8560" aria-label="Grün"></button><button type="button" class="color-swatch" data-color="#a7d8a5" style="--swatch:#a7d8a5" aria-label="Hellgrün"></button><button type="button" class="color-swatch" data-color="#3f6cae" style="--swatch:#3f6cae" aria-label="Blau"></button><button type="button" class="color-swatch" data-color="#91cde2" style="--swatch:#91cde2" aria-label="Hellblau"></button><button type="button" class="color-swatch" data-color="#8b9199" style="--swatch:#8b9199" aria-label="Grau"></button><button type="button" class="color-swatch" data-color="#261923" style="--swatch:#261923" aria-label="Schwarz"></button><button type="button" class="color-swatch white" data-color="#fffaf5" style="--swatch:#fffaf5" aria-label="Weiß"></button><button type="button" class="color-swatch" data-color="#e7b98d" style="--swatch:#e7b98d" aria-label="Hautfarbe"></button><button type="button" class="color-swatch" data-color="#b77b52" style="--swatch:#b77b52" aria-label="Hellbraun"></button><button type="button" class="eraser-button" id="eraser" aria-label="Radierer">⌫</button></div><label class="brush-size" for="brush-size">Größe <input id="brush-size" type="range" min="3" max="40" value="9"><output id="brush-size-value">9</output></label><button type="button" class="quiet-button" id="clear-drawing">Zeichnung löschen</button></div><p class="field-hint">Mit dem Finger oder der Maus malen. Die Größe gilt auch für den Radierer.</p><button class="primary-button">Zeichnung speichern</button></form>`;
   if (prompt.kind === "map") {
     const location = old.payload || { lat: 52.52, lng: 13.405, label: "" };
-    return `<form class="answer-form" id="answer-form"><label for="place-label">Wie möchtest du diesen Ort nennen?</label><input class="answer-input" id="place-label" maxlength="200" placeholder="Zum Beispiel: Unser Lieblingscafé" value="${escape(location.label || "")}" required><div id="map-picker" class="map-picker"></div><p class="field-hint" id="map-coordinates">Tippe auf die Karte, um den Ort festzulegen.</p><button type="button" class="quiet-button locate-button" id="locate-me">Meinen aktuellen Standort verwenden</button><button class="primary-button">Ort speichern</button></form>`;
+    return `<form class="answer-form" id="answer-form"><label for="place-label">Wie möchtest du diesen Ort nennen?</label><input class="answer-input" id="place-label" maxlength="200" placeholder="Zum Beispiel: Unser Lieblingscafé" value="${escape(location.label || "")}" required><div class="map-search"><input class="answer-input" id="map-search" type="search" placeholder="Ort oder Adresse suchen"><button type="button" class="quiet-button" id="search-map">Suchen</button></div><div id="map-search-results" class="map-search-results" aria-live="polite"></div><div id="map-picker" class="map-picker"></div><p class="field-hint" id="map-coordinates">Tippe auf die Karte, um den Ort festzulegen.</p><button type="button" class="quiet-button locate-button" id="locate-me">Meinen aktuellen Standort verwenden</button><button class="primary-button">Ort speichern</button></form>`;
   }
   return "";
 }
@@ -223,7 +226,7 @@ function renderEditor(prompt, answer) {
 function renderMediaEditor(kind, old, label, hint) {
   const accept = kind === "audio" ? "audio/webm,audio/mp4,audio/mpeg,audio/ogg,audio/wav" : "image/*";
   const previous = old.payload?.mediaKey ? `<div class="existing-media" data-media-kind="${kind === "audio" ? "audio" : "image"}" data-media-key="${escape(old.payload.mediaKey)}">Bisheriger Beitrag wird geladen …</div>` : "";
-  const recorderUi = kind === "audio" ? `<button type="button" class="record-button" id="record-audio">● Aufnahme starten</button><span id="record-status" class="field-hint"></span>` : "";
+  const recorderUi = kind === "audio" ? `<div class="voice-recorder"><button type="button" class="record-button" id="record-audio" aria-label="Aufnahme starten">●</button><div><strong id="record-status">Zum Aufnehmen antippen</strong><span id="record-timer">0:00</span></div><div class="voice-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div></div><div id="audio-preview" class="audio-preview" hidden></div>` : "";
   const preview = kind === "image" ? '<div id="upload-preview" class="upload-preview" hidden></div>' : "";
   const sizeHint = kind === "image" ? "Dein Foto wird vor dem Upload automatisch verkleinert und komprimiert." : hint;
   return `<form class="answer-form" id="answer-form"><label for="media-file">${label}</label>${previous}<input class="file-input" id="media-file" type="file" accept="${accept}">${preview}<p class="field-hint">${sizeHint}</p><div class="record-row">${recorderUi}</div><button class="primary-button">${kind === "audio" ? "Sprachnachricht speichern" : "Foto speichern"}</button></form>`;
@@ -253,6 +256,7 @@ function bindWorkshop() {
     }
   });
   if (prompt.kind === "audio") setupRecorder();
+  if (prompt.kind === "audio") setupAudioFilePreview();
   if (prompt.kind === "drawing") setupDrawing();
   if (prompt.kind === "map") setupMap(answer?.payload);
   if (prompt.kind === "image") setupPhotoPreview();
@@ -287,6 +291,7 @@ async function uploadMedia(file, kind) {
   const response = await fetch(`${API}/api/media?kind=${encodeURIComponent(kind)}`, { method: "POST", headers: { Authorization: `Bearer ${token()}`, "Content-Type": file.type || (kind === "audio" ? "audio/webm" : "image/png") }, body: file });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.error || "Die Datei konnte nicht hochgeladen werden.");
+  if (kind === "image" || kind === "drawing") mediaPreviewUrls.set(payload.key, URL.createObjectURL(file));
   return { mediaKey: payload.key, mimeType: payload.mimeType };
 }
 
@@ -300,6 +305,35 @@ function setupPhotoPreview() {
     const url = URL.createObjectURL(file);
     preview.hidden = false;
     preview.innerHTML = `<img src="${url}" alt="Vorschau deines ausgewählten Fotos"><span>${escape(file.name)}</span>`;
+  });
+}
+
+function setupAudioFilePreview() {
+  const input = document.querySelector("#media-file");
+  if (!input) return;
+  input.addEventListener("change", () => {
+    const file = input.files?.[0];
+    if (!file) return;
+    setAudioPreview(URL.createObjectURL(file), "Audiodatei bereit zum Speichern.");
+  });
+}
+
+function setAudioPreview(url, message) {
+  const preview = document.querySelector("#audio-preview");
+  const status = document.querySelector("#record-status");
+  if (!preview) return;
+  preview.hidden = false;
+  preview.innerHTML = `<audio controls src="${url}">Dein Browser kann diese Aufnahme nicht abspielen.</audio><button type="button" class="quiet-button" id="discard-audio">Verwerfen</button>`;
+  status.textContent = message;
+  document.querySelector("#discard-audio").addEventListener("click", () => {
+    if (recordedAudioUrl) URL.revokeObjectURL(recordedAudioUrl);
+    recordedAudio = null;
+    recordedAudioUrl = null;
+    const input = document.querySelector("#media-file");
+    if (input) input.value = "";
+    preview.hidden = true;
+    preview.innerHTML = "";
+    status.textContent = "Zum Aufnehmen antippen";
   });
 }
 
@@ -337,6 +371,7 @@ function setupRecorder() {
   if (!button || !navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return;
   button.addEventListener("click", async () => {
     const status = document.querySelector("#record-status");
+    const timer = document.querySelector("#record-timer");
     if (recorder?.state === "recording") { recorder.stop(); return; }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -345,12 +380,20 @@ function setupRecorder() {
       recorder.addEventListener("dataavailable", (event) => event.data.size && chunks.push(event.data));
       recorder.addEventListener("stop", () => {
         recordedAudio = new File([new Blob(chunks, { type: recorder.mimeType || "audio/webm" })], "sprachnachricht.webm", { type: recorder.mimeType || "audio/webm" });
+        if (recordedAudioUrl) URL.revokeObjectURL(recordedAudioUrl);
+        recordedAudioUrl = URL.createObjectURL(recordedAudio);
+        clearInterval(recordingTimer);
         stream.getTracks().forEach((track) => track.stop());
-        button.textContent = "● Aufnahme neu starten";
-        status.textContent = "Aufnahme bereit zum Speichern.";
+        button.textContent = "●";
+        button.setAttribute("aria-label", "Neue Aufnahme starten");
+        setAudioPreview(recordedAudioUrl, "Aufnahme bereit – erst probehören, dann speichern.");
       });
       recorder.start();
-      button.textContent = "■ Aufnahme beenden";
+      const started = Date.now();
+      clearInterval(recordingTimer);
+      recordingTimer = setInterval(() => { const seconds = Math.floor((Date.now() - started) / 1000); timer.textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`; if (seconds >= 90) recorder.stop(); }, 250);
+      button.textContent = "■";
+      button.setAttribute("aria-label", "Aufnahme beenden");
       status.textContent = "Aufnahme läuft …";
     } catch { status.textContent = "Das Mikrofon ist nicht verfügbar. Du kannst stattdessen eine Audiodatei auswählen."; }
   });
@@ -382,6 +425,7 @@ function setupDrawing() {
   drawingCanvas.addEventListener("pointerdown", (event) => { drawing = true; drawingCanvas.setPointerCapture(event.pointerId); const p = point(event); context.beginPath(); context.moveTo(p.x, p.y); });
   drawingCanvas.addEventListener("pointermove", (event) => { if (!drawing) return; const p = point(event); context.lineTo(p.x, p.y); context.stroke(); drawingDirty = true; });
   drawingCanvas.addEventListener("pointerup", () => drawing = false);
+  document.querySelector("#brush-size").addEventListener("input", (event) => { context.lineWidth = Number(event.target.value); document.querySelector("#brush-size-value").textContent = event.target.value; });
   document.querySelectorAll("[data-color]").forEach((button) => button.addEventListener("click", () => setColor(button.dataset.color)));
   document.querySelector("#eraser").addEventListener("click", () => {
     context.globalCompositeOperation = "source-over";
@@ -415,6 +459,29 @@ function setupMap(savedLocation) {
   };
   if (mapLocation) setMarker(initial);
   mapPicker.on("click", (event) => setMarker(event.latlng));
+  const search = async () => {
+    const query = document.querySelector("#map-search").value.trim();
+    const results = document.querySelector("#map-search-results");
+    if (!query) return;
+    results.textContent = "Suche läuft …";
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&q=${encodeURIComponent(query)}`);
+      const places = await response.json();
+      if (!places.length) { results.textContent = "Kein Ort gefunden. Versuch es mit einer genaueren Suche."; return; }
+      results.innerHTML = places.map((place, index) => `<button type="button" data-place-index="${index}">${escape(place.display_name)}</button>`).join("");
+      results.querySelectorAll("[data-place-index]").forEach((button) => button.addEventListener("click", () => {
+        const place = places[Number(button.dataset.placeIndex)];
+        const latlng = { lat: Number(place.lat), lng: Number(place.lon) };
+        mapPicker.setView(latlng, 15);
+        setMarker(latlng);
+        const label = document.querySelector("#place-label");
+        if (!label.value) label.value = place.display_name;
+        results.innerHTML = "";
+      }));
+    } catch { results.textContent = "Die Ortssuche ist gerade nicht erreichbar. Du kannst den Ort auch direkt auf der Karte markieren."; }
+  };
+  document.querySelector("#search-map").addEventListener("click", search);
+  document.querySelector("#map-search").addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); search(); } });
   document.querySelector("#locate-me").addEventListener("click", () => navigator.geolocation?.getCurrentPosition((position) => {
     const latlng = { lat: position.coords.latitude, lng: position.coords.longitude };
     mapPicker.setView(latlng, 15);
@@ -428,6 +495,11 @@ async function hydrateMedia() {
     const key = slot.dataset.mediaKey;
     if (!key) return;
     try {
+      const localUrl = mediaPreviewUrls.get(key);
+      if (localUrl) {
+        slot.innerHTML = slot.dataset.mediaKind === "audio" ? `<audio controls src="${localUrl}">Dein Browser kann diese Aufnahme nicht abspielen.</audio>` : `<img src="${localUrl}" alt="Eine persönliche Überraschung">`;
+        return;
+      }
       const response = await fetch(`${API}/api/media/${encodeURIComponent(key)}`, { headers: { Authorization: `Bearer ${token()}` } });
       if (!response.ok) throw new Error();
       const url = URL.createObjectURL(await response.blob());
