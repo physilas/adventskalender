@@ -212,7 +212,7 @@ function renderEditor(prompt, answer) {
   if (prompt.kind === "link") return `<form class="answer-form" id="answer-form"><label for="answer">Link für ${name(other(state.session.partner))}</label><input class="answer-input" id="answer" type="url" placeholder="https://…" value="${escape(old.content || "")}" required><p class="field-hint">Spotify, YouTube, Mediathek oder jeder andere Link – ohne Konto-Verknüpfung.</p><button class="primary-button">Link speichern</button></form>`;
   if (prompt.kind === "image") return renderMediaEditor("image", old, "Foto auswählen", "Ein neues Foto ersetzt das bisherige.");
   if (prompt.kind === "audio") return renderMediaEditor("audio", old, "Audiodatei auswählen", "Oder nimm direkt hier eine kurze Nachricht auf.");
-  if (prompt.kind === "drawing") return `<form class="answer-form" id="answer-form"><label>Deine Zeichnung für ${name(other(state.session.partner))}</label>${old.payload?.mediaKey ? `<div class="existing-media" data-media-kind="image" data-media-key="${escape(old.payload.mediaKey)}">Bisherige Zeichnung wird geladen …</div>` : ""}<canvas id="drawing-canvas" width="900" height="560" aria-label="Zeichenfläche"></canvas><div class="draw-tools"><button type="button" class="quiet-button" id="clear-drawing">Zeichnung löschen</button><span>Mit dem Finger oder der Maus malen</span></div><button class="primary-button">Zeichnung speichern</button></form>`;
+  if (prompt.kind === "drawing") return `<form class="answer-form" id="answer-form"><label>Deine Zeichnung für ${name(other(state.session.partner))}</label>${old.payload?.mediaKey ? `<div class="existing-media" data-media-kind="image" data-media-key="${escape(old.payload.mediaKey)}">Bisherige Zeichnung wird geladen …</div>` : ""}<canvas id="drawing-canvas" width="900" height="560" aria-label="Zeichenfläche"></canvas><div class="draw-tools"><div class="draw-palette" aria-label="Stiftfarbe wählen"><button type="button" class="color-swatch selected" data-color="#941f42" style="--swatch:#941f42" aria-label="Rot"></button><button type="button" class="color-swatch" data-color="#e8b65e" style="--swatch:#e8b65e" aria-label="Gelb"></button><button type="button" class="color-swatch" data-color="#4d8560" style="--swatch:#4d8560" aria-label="Grün"></button><button type="button" class="color-swatch" data-color="#a7d8a5" style="--swatch:#a7d8a5" aria-label="Hellgrün"></button><button type="button" class="color-swatch" data-color="#3f6cae" style="--swatch:#3f6cae" aria-label="Blau"></button><button type="button" class="color-swatch" data-color="#91cde2" style="--swatch:#91cde2" aria-label="Hellblau"></button><button type="button" class="color-swatch" data-color="#261923" style="--swatch:#261923" aria-label="Schwarz"></button><button type="button" class="color-swatch white" data-color="#fffaf5" style="--swatch:#fffaf5" aria-label="Weiß"></button><button type="button" class="color-swatch" data-color="#e7b98d" style="--swatch:#e7b98d" aria-label="Hautfarbe"></button><button type="button" class="color-swatch" data-color="#b77b52" style="--swatch:#b77b52" aria-label="Hellbraun"></button><button type="button" class="eraser-button" id="eraser" aria-label="Radierer">⌫</button></div><button type="button" class="quiet-button" id="clear-drawing">Zeichnung löschen</button></div><p class="field-hint">Mit dem Finger oder der Maus malen. Der Radierer entfernt nur einzelne Striche.</p><button class="primary-button">Zeichnung speichern</button></form>`;
   if (prompt.kind === "map") {
     const location = old.payload || { lat: 52.52, lng: 13.405, label: "" };
     return `<form class="answer-form" id="answer-form"><label for="place-label">Wie möchtest du diesen Ort nennen?</label><input class="answer-input" id="place-label" maxlength="200" placeholder="Zum Beispiel: Unser Lieblingscafé" value="${escape(location.label || "")}" required><div id="map-picker" class="map-picker"></div><p class="field-hint" id="map-coordinates">Tippe auf die Karte, um den Ort festzulegen.</p><button type="button" class="quiet-button locate-button" id="locate-me">Meinen aktuellen Standort verwenden</button><button class="primary-button">Ort speichern</button></form>`;
@@ -221,10 +221,12 @@ function renderEditor(prompt, answer) {
 }
 
 function renderMediaEditor(kind, old, label, hint) {
-  const accept = kind === "audio" ? "audio/webm,audio/mp4,audio/mpeg,audio/ogg,audio/wav" : "image/jpeg,image/png,image/webp,image/gif";
+  const accept = kind === "audio" ? "audio/webm,audio/mp4,audio/mpeg,audio/ogg,audio/wav" : "image/*";
   const previous = old.payload?.mediaKey ? `<div class="existing-media" data-media-kind="${kind === "audio" ? "audio" : "image"}" data-media-key="${escape(old.payload.mediaKey)}">Bisheriger Beitrag wird geladen …</div>` : "";
   const recorderUi = kind === "audio" ? `<button type="button" class="record-button" id="record-audio">● Aufnahme starten</button><span id="record-status" class="field-hint"></span>` : "";
-  return `<form class="answer-form" id="answer-form"><label for="media-file">${label}</label>${previous}<input class="file-input" id="media-file" type="file" accept="${accept}"><p class="field-hint">${hint}</p><div class="record-row">${recorderUi}</div><button class="primary-button">${kind === "audio" ? "Sprachnachricht speichern" : "Foto speichern"}</button></form>`;
+  const preview = kind === "image" ? '<div id="upload-preview" class="upload-preview" hidden></div>' : "";
+  const sizeHint = kind === "image" ? "Dein Foto wird vor dem Upload automatisch verkleinert und komprimiert." : hint;
+  return `<form class="answer-form" id="answer-form"><label for="media-file">${label}</label>${previous}<input class="file-input" id="media-file" type="file" accept="${accept}">${preview}<p class="field-hint">${sizeHint}</p><div class="record-row">${recorderUi}</div><button class="primary-button">${kind === "audio" ? "Sprachnachricht speichern" : "Foto speichern"}</button></form>`;
 }
 
 function bindWorkshop() {
@@ -253,6 +255,7 @@ function bindWorkshop() {
   if (prompt.kind === "audio") setupRecorder();
   if (prompt.kind === "drawing") setupDrawing();
   if (prompt.kind === "map") setupMap(answer?.payload);
+  if (prompt.kind === "image") setupPhotoPreview();
   hydrateMedia();
 }
 
@@ -271,6 +274,7 @@ async function saveWorkshopAnswer(prompt, previous) {
     let file = document.querySelector("#media-file")?.files?.[0] || null;
     if (prompt.kind === "audio" && recordedAudio) file = recordedAudio;
     if (prompt.kind === "drawing" && drawingDirty) file = await canvasFile();
+    if (file && prompt.kind === "image") file = await compressPhoto(file);
     if (file) payload = await uploadMedia(file, prompt.kind);
     else if (previous?.payload?.mediaKey) payload = previous.payload;
     else throw new Error(prompt.kind === "audio" ? "Bitte nimm etwas auf oder wähle eine Audiodatei." : "Bitte wähle oder erstelle ein Bild.");
@@ -286,6 +290,48 @@ async function uploadMedia(file, kind) {
   return { mediaKey: payload.key, mimeType: payload.mimeType };
 }
 
+function setupPhotoPreview() {
+  const input = document.querySelector("#media-file");
+  const preview = document.querySelector("#upload-preview");
+  if (!input || !preview) return;
+  input.addEventListener("change", () => {
+    const file = input.files?.[0];
+    if (!file) { preview.hidden = true; preview.innerHTML = ""; return; }
+    const url = URL.createObjectURL(file);
+    preview.hidden = false;
+    preview.innerHTML = `<img src="${url}" alt="Vorschau deines ausgewählten Fotos"><span>${escape(file.name)}</span>`;
+  });
+}
+
+async function compressPhoto(file) {
+  if (!file.type.startsWith("image/")) throw new Error("Bitte wähle ein Bild aus.");
+  const image = await new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const element = new Image();
+    element.onload = () => { URL.revokeObjectURL(url); resolve(element); };
+    element.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Dieses Foto konnte nicht gelesen werden. Bitte wähle es noch einmal aus.")); };
+    element.src = url;
+  });
+  const targetBytes = 1_600_000;
+  let scale = Math.min(1, 1920 / Math.max(image.naturalWidth, image.naturalHeight));
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+    for (const quality of [.86, .76, .66, .56]) {
+      const blob = await canvasBlob(canvas, "image/jpeg", quality);
+      if (blob.size <= targetBytes) return new File([blob], "foto.jpg", { type: "image/jpeg" });
+    }
+    scale *= .72;
+  }
+  throw new Error("Das Foto ist selbst nach dem Verkleinern noch zu groß. Bitte wähle ein anderes Bild.");
+}
+
+function canvasBlob(canvas, type, quality) {
+  return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Das Bild konnte nicht vorbereitet werden.")), type, quality));
+}
+
 function setupRecorder() {
   const button = document.querySelector("#record-audio");
   if (!button || !navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return;
@@ -295,7 +341,7 @@ function setupRecorder() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const chunks = [];
-      recorder = new MediaRecorder(stream);
+      recorder = new MediaRecorder(stream, { audioBitsPerSecond: 96_000 });
       recorder.addEventListener("dataavailable", (event) => event.data.size && chunks.push(event.data));
       recorder.addEventListener("stop", () => {
         recordedAudio = new File([new Blob(chunks, { type: recorder.mimeType || "audio/webm" })], "sprachnachricht.webm", { type: recorder.mimeType || "audio/webm" });
@@ -317,9 +363,17 @@ function setupDrawing() {
   const context = drawingCanvas.getContext("2d");
   context.fillStyle = "#fffdf9";
   context.fillRect(0, 0, drawingCanvas.width, drawingCanvas.height);
-  context.strokeStyle = "#941f42";
   context.lineWidth = 9;
   context.lineCap = "round";
+  let activeColor = "#941f42";
+  const setColor = (color) => {
+    activeColor = color;
+    context.globalCompositeOperation = "source-over";
+    context.strokeStyle = color;
+    document.querySelectorAll("[data-color], #eraser").forEach((button) => button.classList.remove("selected"));
+    document.querySelector(`[data-color="${color}"]`)?.classList.add("selected");
+  };
+  setColor(activeColor);
   let drawing = false;
   const point = (event) => {
     const rect = drawingCanvas.getBoundingClientRect();
@@ -328,11 +382,18 @@ function setupDrawing() {
   drawingCanvas.addEventListener("pointerdown", (event) => { drawing = true; drawingCanvas.setPointerCapture(event.pointerId); const p = point(event); context.beginPath(); context.moveTo(p.x, p.y); });
   drawingCanvas.addEventListener("pointermove", (event) => { if (!drawing) return; const p = point(event); context.lineTo(p.x, p.y); context.stroke(); drawingDirty = true; });
   drawingCanvas.addEventListener("pointerup", () => drawing = false);
+  document.querySelectorAll("[data-color]").forEach((button) => button.addEventListener("click", () => setColor(button.dataset.color)));
+  document.querySelector("#eraser").addEventListener("click", () => {
+    context.globalCompositeOperation = "source-over";
+    context.strokeStyle = "#fffdf9";
+    document.querySelectorAll("[data-color], #eraser").forEach((button) => button.classList.remove("selected"));
+    document.querySelector("#eraser").classList.add("selected");
+  });
   document.querySelector("#clear-drawing").addEventListener("click", () => { context.fillStyle = "#fffdf9"; context.fillRect(0, 0, drawingCanvas.width, drawingCanvas.height); drawingDirty = true; });
 }
 
 function canvasFile() {
-  return new Promise((resolve, reject) => drawingCanvas.toBlob((blob) => blob ? resolve(new File([blob], "zeichnung.png", { type: "image/png" })) : reject(new Error("Die Zeichnung konnte nicht vorbereitet werden.")), "image/png"));
+  return canvasBlob(drawingCanvas, "image/jpeg", .86).then((blob) => new File([blob], "zeichnung.jpg", { type: "image/jpeg" }));
 }
 
 function setupMap(savedLocation) {

@@ -36,7 +36,7 @@ Nach dem ersten Push veröffentlicht GitHub die Web-App. Die erste Person richte
 - **Dein Kalender** zeigt die bis zum jeweiligen Datum freigeschalteten Überraschungen des Partners. Ein Herz markiert eine neue Überraschung, ein Haken ein bereits angesehenes Türchen und eine Sanduhr eine noch fehlende Antwort.
 - **Deine Werkstatt** ist immer vollständig geöffnet. Dort lassen sich alle 24 persönlichen Aufgaben vorbereiten oder nachträglich ergänzen. Ein Haken markiert gespeicherte Beiträge, eine Sanduhr vergangene, noch leere Tage.
 - Neben Text und Auswahlfragen gibt es Fotos, kurze Sprachaufnahmen, Zeichnungen, Ortsmarkierungen auf OpenStreetMap und beliebige Links (zum Beispiel Spotify oder YouTube).
-- Bilder, Zeichnungen und Sprachaufnahmen werden privat in D1 gespeichert. Wegen der kostenlosen D1-Grenze sind sie auf **1,8 MB** begrenzt; für Sprachaufnahmen eignet sich daher eine kurze Nachricht.
+- Bilder, Zeichnungen und Sprachaufnahmen werden privat in D1 gespeichert. Fotos werden vor dem Upload automatisch verkleinert und komprimiert; wegen der kostenlosen D1-Grenze bleiben Dateien auf **1,8 MB** begrenzt. Für Sprachaufnahmen eignet sich daher eine kurze Nachricht.
 
 ## Wie die Privatsphäre funktioniert
 
