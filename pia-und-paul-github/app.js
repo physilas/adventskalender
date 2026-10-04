@@ -98,9 +98,9 @@ function alpineRidge(day, baseline, height, layer, className) {
     // smaller Fourier modes only roughen the skyline; they no longer compete with it.
     const primaryPhase = seededValue(day * 31 + layer * 17);
     const secondaryPhase = seededValue(day * 31 + layer * 17 + 11);
-    const primary = .92 * Math.pow(triangularFourier(x * (.64 + layer * .035) + primaryPhase), 2.25);
-    const secondary = .31 * Math.pow(triangularFourier(x * (1.28 + layer * .06) + secondaryPhase), 4.5);
-    const foothills = .07 * Math.pow(triangularFourier(x * (2.45 + layer * .12) + seededValue(day + 47)), 5.5);
+    const primary = .92 * Math.pow(triangularFourier(x * (.49 + layer * .025) + primaryPhase), 2.25);
+    const secondary = .31 * Math.pow(triangularFourier(x * (1.02 + layer * .045) + secondaryPhase), 4.5);
+    const foothills = .07 * Math.pow(triangularFourier(x * (1.95 + layer * .09) + seededValue(day + 47)), 5.5);
     const rockNoise = .014 * Math.sin(Math.PI * 2 * (x * (9 + layer) + seededValue(day + 91)))
       + .007 * Math.sin(Math.PI * 2 * (x * (19 + layer * 2) + seededValue(day + 103)))
       + .003 * Math.sin(Math.PI * 2 * (x * (37 + layer * 3) + seededValue(day + 119)));
