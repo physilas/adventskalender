@@ -571,10 +571,27 @@ async function hydrateMedia() {
       }
       const response = await fetch(`${API}/api/media/${encodeURIComponent(key)}`, { headers: { Authorization: `Bearer ${token()}` } });
       if (!response.ok) throw new Error();
-      const url = URL.createObjectURL(await response.blob());
-      slot.innerHTML = slot.dataset.mediaKind === "audio" ? `<audio controls src="${url}">Dein Browser kann diese Aufnahme nicht abspielen.</audio>` : `<img src="${url}" alt="Eine persönliche Überraschung">`;
+      const bytes = await response.arrayBuffer();
+      const mimeType = response.headers.get("content-type") || (slot.dataset.mediaKind === "audio" ? "audio/webm" : "image/jpeg");
+      const blob = new Blob([bytes], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      if (slot.dataset.mediaKind === "audio") {
+        slot.innerHTML = `<audio controls src="${url}">Dein Browser kann diese Aufnahme nicht abspielen.</audio>`;
+      } else {
+        slot.innerHTML = `<img src="${url}" alt="Eine persönliche Überraschung">`;
+        const image = slot.querySelector("img");
+        image.addEventListener("error", () => renderImageDataUrl(image, blob, slot), { once: true });
+      }
     } catch { slot.textContent = "Dieser Beitrag konnte gerade nicht geladen werden."; }
   }));
+}
+
+function renderImageDataUrl(image, blob, slot) {
+  const reader = new FileReader();
+  reader.addEventListener("load", () => { image.src = String(reader.result); });
+  reader.addEventListener("error", () => { slot.textContent = "Dieses Foto konnte nicht dargestellt werden."; });
+  image.addEventListener("error", () => { slot.textContent = "Dieses Foto konnte nicht dargestellt werden."; }, { once: true });
+  reader.readAsDataURL(blob);
 }
 
 load();
