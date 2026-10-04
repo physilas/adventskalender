@@ -92,26 +92,19 @@ function triangularFourier(value, modes = 9) {
 }
 function alpineRidge(day, baseline, height, layer, className) {
   const points = [];
-  const modes = [
-    [.58 + layer * .04, .42, 3.1],
-    [1.18 + layer * .08, .54, 5.4],
-    [2.16 + layer * .13, .36, 8.4],
-    [4.25 + layer * .19, .22, 11.5],
-    [8.3 + layer * .25, .12, 16.5]
-  ];
   for (let index = 0; index <= 144; index += 1) {
     const x = index / 144;
-    // Multiple low and high frequency Fourier modes; no edge envelope so the ridge
-    // continues naturally beyond both sides of the door instead of falling away.
-    let ridge = .16;
-    modes.forEach(([frequency, amplitude, sharpness], mode) => {
-      const phase = seededValue(day * 31 + layer * 17 + mode * 11);
-      const wave = triangularFourier(x * frequency + phase);
-      ridge += amplitude * Math.pow(wave, sharpness);
-    });
-    const rockCut = .055 * Math.sin(Math.PI * 2 * (x * (12 + layer) + seededValue(day + 91)))
-      + .025 * Math.sin(Math.PI * 2 * (x * (29 + layer * 3) + seededValue(day + 103)));
-    const y = baseline - height * (ridge + rockCut);
+    // Two deliberately dominant masses make this read as a mountain range. The
+    // smaller Fourier modes only roughen the skyline; they no longer compete with it.
+    const primaryPhase = seededValue(day * 31 + layer * 17);
+    const secondaryPhase = seededValue(day * 31 + layer * 17 + 11);
+    const primary = .74 * Math.pow(triangularFourier(x * (.64 + layer * .035) + primaryPhase), 2.25);
+    const secondary = .38 * Math.pow(triangularFourier(x * (1.28 + layer * .06) + secondaryPhase), 4.5);
+    const foothills = .12 * Math.pow(triangularFourier(x * (2.45 + layer * .12) + seededValue(day + 47)), 5.5);
+    const rockNoise = .027 * Math.sin(Math.PI * 2 * (x * (9 + layer) + seededValue(day + 91)))
+      + .014 * Math.sin(Math.PI * 2 * (x * (19 + layer * 2) + seededValue(day + 103)))
+      + .007 * Math.sin(Math.PI * 2 * (x * (37 + layer * 3) + seededValue(day + 119)));
+    const y = baseline - height * (.18 + primary + secondary + foothills + rockNoise);
     points.push(`${(x * 120).toFixed(2)},${Math.max(4, Math.min(96, y)).toFixed(2)}`);
   }
   return `<path class="${className}" d="M0,100 L${points.join(" L")} L120,100 Z"/><path class="${className}-contour" d="M${points.join(" L")}"/>`;
