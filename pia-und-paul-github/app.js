@@ -5,10 +5,10 @@ const app = document.querySelector("#app");
 const days = Array.from({ length: 24 }, (_, index) => index + 1);
 const question = (kind, prompt, options = [], hint = "") => ({ kind, prompt, options, hint });
 const piaHouseRanking = [
-  { id: "waldhuette", word: "Waldrand", label: "Die Berghütte am Waldrand", image: "https://images.unsplash.com/photo-1698213248549-b116da488294?auto=format&fit=crop&w=900&q=82" },
+  { id: "moderneshaus", word: "Modern", label: "Das moderne Haus am Pool", image: "https://unsplash.com/photos/mmuGuSv208c/download?force=true&w=900" },
   { id: "reetdach", word: "Reetdach", label: "Das reetgedeckte Landhaus", image: "https://images.unsplash.com/photo-1682516086739-c3fbf844529b?auto=format&fit=crop&w=900&q=82" },
   { id: "steinhaus", word: "Steingarten", label: "Das Steinhäuschen mit wildem Garten", image: "https://images.unsplash.com/photo-1688396538097-af54bb314ab6?auto=format&fit=crop&w=900&q=82" },
-  { id: "holzhaus", word: "Bergblick", label: "Das große Holzhaus in den Bergen", image: "https://images.unsplash.com/photo-1506974210756-8e1b8985d348?auto=format&fit=crop&w=900&q=82" },
+  { id: "tropenhaus", word: "Tropisch", label: "Das tropische Haus mit Hängematte", image: "https://unsplash.com/photos/rpwWARDyQy0/download?force=true&w=900" },
 ];
 const paulFlowerRanking = [
   { id: "sonnenblumen", label: "Sonnenblumen", image: "https://images.unsplash.com/photo-1757904257403-be898c4fbc2f?auto=format&fit=crop&w=900&q=82" },
@@ -29,7 +29,7 @@ const prompts = {
     question("audio", "Erzähl Paul von deinem Lieblingsmoment auf eurer Hochzeit."),
     question("text", "Welche Advents- oder Weihnachtstradition möchtet ihr weiterführen oder neu erfinden?"),
     question("map", "Wenn alles möglich wäre: Wohin würdest du mit Paul reisen?"),
-    question("audio", "Lies eure Hochzeitsversprechen noch einmal vor."),
+    question("audio", "Lies dein Hochzeitsversprechen an Paul noch einmal vor."),
     question("link", "Teile einen Podcast oder spannenden Artikel für euren nächsten gemeinsamen Abend."),
     question("drawing", "Zeichne ein Pia-&-Paul-Logo."),
     question("audio", "Schick Paul ein Segensgebet für das kommende Jahr."),
@@ -55,7 +55,7 @@ const prompts = {
     question("text", "Liebe Pia, heute schenke ich dir einen Gutschein für …"),
     question("image", "Schick Pia ein Rezept aus eurem Hochzeitsrezeptordner, das ihr bald kochen solltet."),
     question("text", "Wenn ich an Weihnachten (wie gewohnt) 1.000.000 € bekommen würde, dann würde ich …"),
-    question("audio", "Lies eure Hochzeitsversprechen noch einmal vor."),
+    question("audio", "Lies dein Hochzeitsversprechen an Pia noch einmal vor."),
     question("text", "Was war dein persönliches Highlight eures ersten Ehequartals?"),
     question("drawing", "Zeichne ein Pia-&-Paul-Logo."),
     question("text", "Mache Pia ein ungewöhnliches Kompliment."),
@@ -297,17 +297,19 @@ function bindCalendar() {
 function renderWorkshop(message = "") {
   const { session, status, ownAnswers = {} } = state;
   const today = status.phase === "active" ? status.writeDay : status.phase === "complete" ? 25 : 0;
-  const doors = shuffledDoorDays(session.partner, state.seasonYear).map((day) => {
+  const doors = days.map((day) => {
     const answer = ownAnswers[day];
     const isGift = prompts[session.partner][day - 1].kind === "gift";
     const stateClass = isGift || answer ? "complete" : day < today ? "overdue" : day === today ? "today" : "upcoming";
-    const marker = isGift || answer ? "✓" : day < today ? "◷" : day === today ? "•" : "";
+    const marker = isGift || answer ? "✓" : day < today ? "!" : day === today ? "•" : "";
     return `<button class="door workshop-door ${stateClass} ${selectedWorkshopDay === day ? "active" : ""}" data-workshop-day="${day}">${mountain(day)}<span>${day}</span><b aria-hidden="true">${marker}</b></button>`;
   }).join("");
   const prompt = prompts[session.partner][selectedWorkshopDay - 1];
   const answer = ownAnswers[selectedWorkshopDay];
   const isGift = prompt.kind === "gift";
-  return `<section class="calendar-layout workshop-layout"><nav class="door-grid" aria-label="Deine Werkstatt-Türchen">${doors}</nav><article class="door-detail workshop-detail"><div class="detail-top"><p class="eyebrow">Werkstatt · Türchen ${selectedWorkshopDay}</p><span class="status-pill">${isGift ? "✓ vorbereitet" : answer ? "✓ vorbereitet" : selectedWorkshopDay < today ? "◷ nachholen" : "✦ frei gestaltbar"}</span></div>${isGift ? renderGiftCopy() : `<p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${prompt.hint ? `<p class="prompt-hint">${escape(prompt.hint)}</p>` : ""}${renderEditor(prompt, answer)}${message ? `<p class="save-message">${escape(message)}</p>` : ""}`}</article></section><p class="legend"><span class="legend-complete">✓</span> vorbereitet <span class="legend-missing">◷</span> nachholen <span class="legend-today">•</span> heute</p>`;
+  const canRetract = state.withdrawableDays?.includes(selectedWorkshopDay);
+  const retractControl = answer ? canRetract ? `<button type="button" class="retract-button" id="retract-answer">Antwort zurückziehen</button>` : `<p class="retract-note">Diese Antwort wurde schon geöffnet und bleibt deshalb als Überraschung erhalten.</p>` : "";
+  return `<section class="calendar-layout workshop-layout"><nav class="door-grid" aria-label="Deine Werkstatt-Türchen">${doors}</nav><article class="door-detail workshop-detail"><div class="detail-top"><p class="eyebrow">Werkstatt · Türchen ${selectedWorkshopDay}</p><span class="status-pill">${isGift ? "✓ vorbereitet" : answer ? "✓ vorbereitet" : selectedWorkshopDay < today ? "! nachholen" : "✦ frei gestaltbar"}</span></div>${isGift ? renderGiftCopy() : `<p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${prompt.hint ? `<p class="prompt-hint">${escape(prompt.hint)}</p>` : ""}${renderEditor(prompt, answer)}${retractControl}${message ? `<p class="save-message">${escape(message)}</p>` : ""}`}</article></section><p class="legend"><span class="legend-complete">✓</span> vorbereitet <span class="legend-missing">!</span> nachholen <span class="legend-today">•</span> heute</p>`;
 }
 
 function renderGiftCopy() { return `<section class="gift-copy"><span aria-hidden="true">✦</span><h2>Lasst euch überraschen :)</h2><p>Dieses Türchen ist schon für euch vorbereitet.</p></section>`; }
@@ -380,6 +382,20 @@ function bindWorkshop() {
   if (prompt.kind === "map") setupMap(answer?.payload);
   if (prompt.kind === "image") setupPhotoPreview();
   if (prompt.kind === "ranking") setupRankingSort();
+  document.querySelector("#retract-answer")?.addEventListener("click", async () => {
+    if (!window.confirm("Antwort wirklich zurückziehen? Sie wird wieder als unbearbeitet angezeigt.")) return;
+    const button = document.querySelector("#retract-answer");
+    button.disabled = true;
+    try {
+      await api(`/api/answers/${selectedWorkshopDay}`, { method: "DELETE" });
+      delete state.ownAnswers[selectedWorkshopDay];
+      state.withdrawableDays = state.withdrawableDays.filter((day) => day !== selectedWorkshopDay);
+      renderApp("Antwort zurückgezogen – das Türchen ist wieder unbearbeitet.");
+    } catch (error) {
+      button.disabled = false;
+      renderApp(error.message);
+    }
+  });
   hydrateMedia();
 }
 

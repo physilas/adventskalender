@@ -31,6 +31,7 @@ async function route(request: Request, env: Env, url: URL): Promise<Response> {
   if (path === "/api/setup" && request.method === "POST") return setup(request, env);
   if (path === "/api/session" && request.method === "POST") return signIn(request, env);
   if (path === "/api/answers" && request.method === "PUT") return saveAnswer(request, env);
+  if (path.startsWith("/api/answers/") && request.method === "DELETE") return retractAnswer(request, env, path);
   if (path === "/api/riddles/guess" && request.method === "POST") return checkRiddleGuess(request, env);
   if (path === "/api/doors/open" && request.method === "POST") return markDoorSeen(request, env);
   if (path === "/api/media" && request.method === "POST") return uploadMedia(request, env, url);
@@ -47,11 +48,13 @@ async function readCalendar(request: Request, env: Env): Promise<Response> {
 
   const status = seasonStatus(calendar, env);
   const partner = otherPartner(session.partner);
-  const [own, received, views] = await Promise.all([
+  const [own, received, views, partnerViews] = await Promise.all([
     env.DB.prepare("SELECT day, content, kind, payload, updated_at FROM answers WHERE author = ?").bind(session.partner).all<AnswerRow>(),
     env.DB.prepare("SELECT day, content, kind, payload, updated_at FROM answers WHERE author = ? AND day <= ?").bind(partner, status.revealThrough).all<AnswerRow>(),
     env.DB.prepare("SELECT day FROM door_views WHERE viewer = ?").bind(session.partner).all<{ day: number }>(),
+    env.DB.prepare("SELECT day FROM door_views WHERE viewer = ?").bind(partner).all<{ day: number }>(),
   ]);
+  const openedByPartner = new Set(partnerViews.results.map((row) => row.day));
   return json({
     configured: true,
     session,
@@ -60,6 +63,7 @@ async function readCalendar(request: Request, env: Env): Promise<Response> {
     ownAnswers: Object.fromEntries(own.results.map((row) => [row.day, answerFromRow(row)])),
     partnerAnswers: Object.fromEntries(received.results.map((row) => [row.day, answerFromRow(row, true)])),
     seenDays: views.results.map((row) => row.day),
+    withdrawableDays: own.results.map((row) => row.day).filter((day) => !openedByPartner.has(day)),
   });
 }
 
@@ -120,6 +124,19 @@ async function saveAnswer(request: Request, env: Env): Promise<Response> {
   const payloadJson = payload ? JSON.stringify(payload) : null;
   await env.DB.prepare("INSERT INTO answers (day, author, content, kind, payload, updated_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(day, author) DO UPDATE SET content = excluded.content, kind = excluded.kind, payload = excluded.payload, updated_at = CURRENT_TIMESTAMP").bind(body.day, session.partner, content, kind, payloadJson).run();
   return json({ day: body.day, kind, content, payload, updatedAt: new Date().toISOString() });
+}
+
+async function retractAnswer(request: Request, env: Env, path: string): Promise<Response> {
+  const session = await getSession(request, env);
+  const calendar = await getCalendar(env);
+  if (!session || !calendar) return json({ error: "Bitte melde dich zuerst an." }, 401);
+  const day = Number(path.slice("/api/answers/".length));
+  if (!Number.isInteger(day) || day < 1 || day > 24) return json({ error: "Wähle ein gültiges Türchen." }, 400);
+  const alreadyOpened = await env.DB.prepare("SELECT 1 FROM door_views WHERE day = ? AND viewer = ? LIMIT 1").bind(day, otherPartner(session.partner)).first();
+  if (alreadyOpened) return json({ error: "Diese Antwort wurde schon geöffnet und kann nicht mehr zurückgezogen werden." }, 409);
+  const result = await env.DB.prepare("DELETE FROM answers WHERE day = ? AND author = ?").bind(day, session.partner).run();
+  if (!result.meta.changes) return json({ error: "Diese Antwort gibt es nicht mehr." }, 404);
+  return json({ day, retracted: true });
 }
 
 async function markDoorSeen(request: Request, env: Env): Promise<Response> {
@@ -241,7 +258,7 @@ function otherPartner(partner: Partner): Partner { return partner === "pia" ? "p
 function isPartner(value: unknown): value is Partner { return value === "pia" || value === "paul"; }
 function isAnswerKind(value: unknown): value is AnswerKind { return typeof value === "string" && ANSWER_KINDS.includes(value as AnswerKind); }
 function json(body: unknown, status = 200) { return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS }); }
-function corsHeaders(request: Request) { return { "access-control-allow-origin": request.headers.get("Origin") ?? "*", "access-control-allow-methods": "GET, POST, PUT, OPTIONS", "access-control-allow-headers": "Authorization, Content-Type", vary: "Origin" }; }
+function corsHeaders(request: Request) { return { "access-control-allow-origin": request.headers.get("Origin") ?? "*", "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS", "access-control-allow-headers": "Authorization, Content-Type", vary: "Origin" }; }
 async function withCors(response: Response, request: Request) {
   const headers = new Headers(response.headers);
   for (const [key, value] of Object.entries(corsHeaders(request))) headers.set(key, value);

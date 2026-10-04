@@ -75,6 +75,19 @@ body,
 .developer-panel .test-day-controls select { color: #16384f; }
 
 .calendar-layout--calendar { width: min(100%, 48rem); }
+.workshop-layout {
+  grid-template-columns: minmax(18rem, 22rem) minmax(0, 1fr);
+  align-items: stretch;
+}
+.workshop-layout .door-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-content: start;
+}
+.workshop-layout .door-detail {
+  width: 100%;
+  min-width: 0;
+  min-height: 31rem;
+}
 .door-grid { gap: .72rem; }
 .door.calendar-door,
 .door.workshop-door {
@@ -314,6 +327,20 @@ body,
 .gift-copy h2,
 .gift-copy p { margin: 0; }
 .gift-copy p { color: #5b7688; }
+.retract-button {
+  justify-self: start;
+  margin-top: .35rem;
+  padding: .55rem .7rem;
+  border: 1px solid #c88787;
+  border-radius: .55rem;
+  color: #8b3030;
+  background: #fff8f8;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: .82rem;
+  font-weight: 700;
+}
+.retract-button:hover:not(:disabled) { background: #fff0f0; }
+.retract-note { margin: .4rem 0 0; color: #6b899a; font-family: Arial, Helvetica, sans-serif; font-size: .8rem; line-height: 1.4; }
 .riddle-guess {
   display: grid;
   gap: .5rem;
@@ -350,6 +377,8 @@ body,
 @media (max-width: 700px) {
   .calendar-shell .view-switch { background: #f1f6f8; }
   .calendar-shell .calendar-layout--calendar .door-grid { gap: .48rem; }
+  .workshop-layout { grid-template-columns: 1fr; }
+  .workshop-layout .door-detail { min-height: 0; }
   .ranking-result { grid-template-columns: 1fr; }
   .riddle-guess > div { align-items: stretch; flex-direction: column; }
 }
