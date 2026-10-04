@@ -323,8 +323,16 @@ function setAudioPreview(url, message) {
   const status = document.querySelector("#record-status");
   if (!preview) return;
   preview.hidden = false;
-  preview.innerHTML = `<audio controls src="${url}">Dein Browser kann diese Aufnahme nicht abspielen.</audio><button type="button" class="quiet-button" id="discard-audio">Verwerfen</button>`;
+  preview.innerHTML = `<audio id="audio-player" src="${url}">Dein Browser kann diese Aufnahme nicht abspielen.</audio><button type="button" class="audio-play" id="play-audio">▶ Probe hören</button><button type="button" class="quiet-button" id="discard-audio">Verwerfen</button>`;
   status.textContent = message;
+  const player = document.querySelector("#audio-player");
+  const playButton = document.querySelector("#play-audio");
+  playButton.addEventListener("click", async () => {
+    if (player.paused) { await player.play(); } else { player.pause(); }
+  });
+  player.addEventListener("play", () => playButton.textContent = "❚❚ Pause");
+  player.addEventListener("pause", () => playButton.textContent = "▶ Probe hören");
+  player.addEventListener("ended", () => playButton.textContent = "▶ Noch einmal hören");
   document.querySelector("#discard-audio").addEventListener("click", () => {
     if (recordedAudioUrl) URL.revokeObjectURL(recordedAudioUrl);
     recordedAudio = null;
@@ -408,6 +416,7 @@ function setupDrawing() {
   context.fillRect(0, 0, drawingCanvas.width, drawingCanvas.height);
   context.lineWidth = 9;
   context.lineCap = "round";
+  context.lineJoin = "round";
   let activeColor = "#941f42";
   const setColor = (color) => {
     activeColor = color;
@@ -418,13 +427,24 @@ function setupDrawing() {
   };
   setColor(activeColor);
   let drawing = false;
+  let lastPoint = null;
   const point = (event) => {
     const rect = drawingCanvas.getBoundingClientRect();
     return { x: (event.clientX - rect.left) * drawingCanvas.width / rect.width, y: (event.clientY - rect.top) * drawingCanvas.height / rect.height };
   };
-  drawingCanvas.addEventListener("pointerdown", (event) => { drawing = true; drawingCanvas.setPointerCapture(event.pointerId); const p = point(event); context.beginPath(); context.moveTo(p.x, p.y); });
-  drawingCanvas.addEventListener("pointermove", (event) => { if (!drawing) return; const p = point(event); context.lineTo(p.x, p.y); context.stroke(); drawingDirty = true; });
-  drawingCanvas.addEventListener("pointerup", () => drawing = false);
+  const drawTo = (event) => {
+    const current = point(event);
+    if (!lastPoint) { lastPoint = current; return; }
+    const mid = { x: (lastPoint.x + current.x) / 2, y: (lastPoint.y + current.y) / 2 };
+    context.quadraticCurveTo(lastPoint.x, lastPoint.y, mid.x, mid.y);
+    context.stroke();
+    lastPoint = current;
+    drawingDirty = true;
+  };
+  drawingCanvas.addEventListener("pointerdown", (event) => { drawing = true; drawingCanvas.setPointerCapture(event.pointerId); lastPoint = point(event); context.beginPath(); context.moveTo(lastPoint.x, lastPoint.y); });
+  drawingCanvas.addEventListener("pointermove", (event) => { if (!drawing) return; const events = event.getCoalescedEvents?.() || [event]; events.forEach(drawTo); });
+  drawingCanvas.addEventListener("pointerup", (event) => { if (drawing) drawTo(event); drawing = false; lastPoint = null; });
+  drawingCanvas.addEventListener("pointercancel", () => { drawing = false; lastPoint = null; });
   document.querySelector("#brush-size").addEventListener("input", (event) => { context.lineWidth = Number(event.target.value); document.querySelector("#brush-size-value").textContent = event.target.value; });
   document.querySelectorAll("[data-color]").forEach((button) => button.addEventListener("click", () => setColor(button.dataset.color)));
   document.querySelector("#eraser").addEventListener("click", () => {
