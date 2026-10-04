@@ -4,64 +4,70 @@ const TOKEN_STORAGE_KEY = TEST_MODE ? "pia-paul-calendar-test-token" : "pia-paul
 const app = document.querySelector("#app");
 const days = Array.from({ length: 24 }, (_, index) => index + 1);
 const question = (kind, prompt, options = [], hint = "") => ({ kind, prompt, options, hint });
-const paulHouseRanking = [
+const piaHouseRanking = [
   { id: "waldhuette", word: "Waldrand", label: "Die Berghütte am Waldrand", image: "https://images.unsplash.com/photo-1698213248549-b116da488294?auto=format&fit=crop&w=900&q=82" },
   { id: "reetdach", word: "Reetdach", label: "Das reetgedeckte Landhaus", image: "https://images.unsplash.com/photo-1682516086739-c3fbf844529b?auto=format&fit=crop&w=900&q=82" },
   { id: "steinhaus", word: "Steingarten", label: "Das Steinhäuschen mit wildem Garten", image: "https://images.unsplash.com/photo-1688396538097-af54bb314ab6?auto=format&fit=crop&w=900&q=82" },
   { id: "holzhaus", word: "Bergblick", label: "Das große Holzhaus in den Bergen", image: "https://images.unsplash.com/photo-1506974210756-8e1b8985d348?auto=format&fit=crop&w=900&q=82" },
 ];
+const paulFlowerRanking = [
+  { id: "sonnenblumen", label: "Sonnenblumen", image: "https://images.unsplash.com/photo-1757904257403-be898c4fbc2f?auto=format&fit=crop&w=900&q=82" },
+  { id: "wildblumen", label: "Wildblumen", image: "https://images.unsplash.com/photo-1654409586056-8de6ac831ec5?auto=format&fit=crop&w=900&q=82" },
+  { id: "pfingstrosen", label: "Pfingstrosen", image: "https://images.unsplash.com/photo-1591963944277-fe153988e471?auto=format&fit=crop&w=900&q=82" },
+  { id: "tulpen", label: "Tulpen", image: "https://images.unsplash.com/photo-1520763185298-1b434c919102?auto=format&fit=crop&w=900&q=82" },
+];
 const prompts = {
   pia: [
+    question("map", "Welchen Christkindlmarkt möchtest du mit Paul besuchen?"),
+    question("text", "Welcher Bibelcharakter wäre Paul und warum?"),
+    question("ranking", "Welche Blumen würde Paul am liebsten mögen?", paulFlowerRanking, "Sortiere die Blumen: Oben ist Platz 1."),
+    question("drawing-riddle", "Zeichne einen Gegenstand, den du mit Paul verbindest. Paul darf raten, was es ist."),
+    question("text", "Welches Weihnachtsgebäck solltet ihr unbedingt zusammen backen?"),
+    question("audio", "Und pünktlich zum sex-ten Dezember: Was findest du an Paul besonders sexy? Flüstere es ihm ins Ohr."),
+    question("link", "Schick Paul ein Weihnachtslied.", [], "Ein Spotify-, YouTube- oder anderer Link."),
+    question("audio", "Nenne drei Dinge, die Paul ganz selbstverständlich gut kann."),
+    question("audio", "Erzähl Paul von deinem Lieblingsmoment auf eurer Hochzeit."),
+    question("text", "Welche Advents- oder Weihnachtstradition möchtet ihr weiterführen oder neu erfinden?"),
+    question("map", "Wenn alles möglich wäre: Wohin würdest du mit Paul reisen?"),
+    question("audio", "Lies eure Hochzeitsversprechen noch einmal vor."),
+    question("link", "Teile einen Podcast oder spannenden Artikel für euren nächsten gemeinsamen Abend."),
+    question("drawing", "Zeichne ein Pia-&-Paul-Logo."),
+    question("audio", "Schick Paul ein Segensgebet für das kommende Jahr."),
+    question("text", "Welche drei Wörter beschreiben euch als Ehepaar am besten?"),
+    question("text", "Das wollte ich schon immer mal auf einem Weihnachtsmarktstand kaufen (#last minute Geschenktipp für Paul)."),
+    question("text", "Lieber Paul, heute schenke ich dir einen Gutschein für …"),
+    question("audio", "Welche kleine Macke von Paul hast du liebgewonnen?"),
+    question("image", "Zeig Paul ein Detail eures neuen Zuhauses, das du besonders liebst."),
+    question("link", "Teile etwas, das ihr bald zusammen ausprobieren könnt."),
+    question("audio", "Imitiere Paul liebevoll, wenn er sich über etwas ganz Alltägliches aufregt."),
     question("text", "Woran merkst du, dass Paul dich wirklich kennt?"),
-    question("choice", "Welche kleine Geste von Paul fühlt sich für dich am meisten nach Zuhause an?", ["Eine Umarmung", "Sein Humor", "Eine liebe Nachricht", "Etwas ganz anderes"]),
-    question("image", "Zeig Paul ein Foto von einem Moment, der dich heute noch glücklich macht.", [], "Ein gemeinsames Bild, ein Detail oder ein Ort – alles ist erlaubt."),
-    question("map", "Markiere den Ort, an dem ihr euch besonders nah gefühlt habt."),
-    question("drawing", "Male eine winzige Skizze von eurem perfekten freien Sonntag."),
-    question("audio", "Nimm eine kurze Sprachnachricht auf: Wofür bist du Paul heute dankbar?"),
-    question("link", "Schick Paul ein Lied, das gerade nach euch klingt.", [], "Ein Spotify-, YouTube- oder anderer Link."),
-    question("text", "Welche Stärke von Paul bewunderst du, auch wenn du es ihm viel zu selten sagst?"),
-    question("ranking", "Wie gut kennst du Paul? In welchem dieser Häuser würde er wohl am liebsten wohnen? Erstelle ein Ranking.", paulHouseRanking, "Verteile jeden Platz genau einmal – Platz 1 ist sein Traumhaus."),
-    question("image", "Fotografiere etwas aus eurem Alltag, das dich an Paul erinnert."),
-    question("map", "Welchen Ort möchtet ihr unbedingt einmal zusammen besuchen?"),
-    question("drawing", "Zeichne Paul ein kleines Symbol für etwas, das euch zu einem guten Team macht."),
-    question("text", "Welche Erinnerung an euer Kennenlernen möchtest du niemals verlieren?"),
-    question("audio", "Erzähl Paul eine kleine Geschichte, über die ihr später zusammen lachen sollt."),
-    question("link", "Teile einen Film-, Podcast- oder Artikel-Link für euren nächsten gemeinsamen Abend."),
-    question("text", "Welche Kleinigkeit wünschst du dir öfter in eurem gemeinsamen Alltag?"),
-    question("choice", "Wann fühlst du dich Paul am nächsten?", ["Beim Reden", "Beim Lachen", "In stillen Momenten", "Wenn ihr etwas zusammen schafft"]),
-    question("image", "Mach ein Foto von deinem heutigen kleinen Glücksmoment."),
-    question("map", "Wo würdest du Paul gern einmal spontan zum Date entführen?"),
-    question("drawing", "Male eine kleine Postkarte aus eurer Wunsch-Zukunft."),
-    question("audio", "Sag Paul drei Dinge, die er ganz selbstverständlich gut kann."),
-    question("text", "Worüber möchtest du mit Paul im nächsten Jahr noch viel öfter lachen?"),
-    question("link", "Schenke Paul einen Link, der ihm an einem schweren Tag ein Lächeln schenken könnte."),
-    question("text", "Was wünschst du euch beiden für das nächste Weihnachtsfest?"),
+    question("gift", "Lasst euch überraschen :)"),
   ],
   paul: [
-    question("text", "Woran merkst du, dass Pia dich wirklich kennt?"),
-    question("choice", "Welche Seite an Pia bringt dich am schnellsten zum Lächeln?", ["Ihr Lachen", "Ihre Fürsorge", "Ihre Ideen", "Ihre Eigenheiten"]),
-    question("audio", "Nimm eine kurze Nachricht auf: Was möchtest du Pia heute unbedingt sagen?"),
-    question("map", "Markiere den Ort, an dem du mit Pia eine besonders schöne Erinnerung hast."),
-    question("image", "Zeig Pia ein Foto von etwas, das du mit ihr erleben möchtest."),
-    question("drawing", "Zeichne eure Beziehung als Wetterbericht – Sonne, Wolken, Konfetti oder alles zusammen."),
-    question("link", "Schick Pia ein Lied, bei dem du sofort an sie denkst.", [], "Spotify, YouTube und andere Links funktionieren."),
-    question("text", "Welche Stärke von Pia bewunderst du besonders?"),
-    question("choice", "Was wäre euer perfekter freier Sonntag?", ["Lange frühstücken", "Draußen unterwegs sein", "Etwas Neues ausprobieren", "Einfach einkuscheln"]),
-    question("map", "Welchen Ort in eurer Nähe würdest du Pia gern einmal neu zeigen?"),
+    question("audio", "Erzähl Pia einen Weihnachtswitz."),
+    question("image", "Schick Pia dein Lieblingsfoto von eurer Hochzeit."),
+    question("choice-custom", "Auf welches Weihnachtsdate hättest du Lust?", ["Über einen Weihnachtsmarkt schlendern", "Schlittschuhlaufen", "Gemütlicher Filmabend", "Eigene Date-Idee"]),
+    question("text", "Was hast du in der Ehe neu an Pia kennen und lieben gelernt?"),
+    question("audio", "Welches Geräusch macht Pia häufiger mal?"),
+    question("text", "Wenn Pia ein Weihnachts-Snack wäre, welcher wäre sie und warum?"),
     question("image", "Fotografiere eine Kleinigkeit, die euren Alltag für dich heimelig macht."),
-    question("audio", "Erzähl Pia von einem stillen Glücksmoment aus diesem Jahr."),
-    question("text", "Welche Tradition möchtet ihr zwei unbedingt weiterführen oder erfinden?"),
-    question("drawing", "Male ein Mini-Logo für euch als Team."),
-    question("link", "Teile einen Link zu etwas, das ihr bald gemeinsam ausprobieren könnt."),
-    question("text", "Wie hilft dir Pia dabei, du selbst zu sein?"),
-    question("choice", "Welche Erinnerung mit Pia würdest du gern noch einmal erleben?", ["Euer erstes Date", "Eine Reise", "Ein gemütlicher Abend", "Einen ganz normalen schönen Tag"]),
-    question("image", "Zeig Pia ein Foto, das sie unbedingt einmal mit deinen Augen sehen soll."),
-    question("map", "Wo möchtet ihr euch in ein paar Jahren gern wiederfinden?"),
-    question("audio", "Nimm ein kleines Zukunftsversprechen für Pia auf."),
-    question("drawing", "Zeichne das erste, woran du denkst, wenn du ‚Pia & Paul‘ hörst."),
-    question("text", "Welche liebevolle Nachricht würde Pia an einem schweren Tag guttun?"),
-    question("link", "Schenke Pia einen Link, der sie heute aufheitern könnte."),
-    question("text", "Was wünschst du euch beiden für das nächste Weihnachtsfest?"),
+    question("link", "Teile den Trailer zu dem Weihnachtsfilm, den du mit Pia sehen möchtest."),
+    question("text", "Liebe Pia, heute schenke ich dir einen Gutschein für …"),
+    question("image", "Schick Pia ein Rezept aus eurem Hochzeitsrezeptordner, das ihr bald kochen solltet."),
+    question("text", "Wenn ich an Weihnachten (wie gewohnt) 1.000.000 € bekommen würde, dann würde ich …"),
+    question("audio", "Lies eure Hochzeitsversprechen noch einmal vor."),
+    question("text", "Was war dein persönliches Highlight eures ersten Ehequartals?"),
+    question("drawing", "Zeichne ein Pia-&-Paul-Logo."),
+    question("text", "Mache Pia ein ungewöhnliches Kompliment."),
+    question("link", "Schick Pia ein Worshiplied."),
+    question("text", "Nenne drei Dinge, für die du mit Pia im nächsten Jahr gerne beten möchtest."),
+    question("ranking", "In welchem dieser Häuser würde Pia am liebsten wohnen?", piaHouseRanking, "Sortiere die Häuser: Oben ist Platz 1."),
+    question("text", "Ich muss gestehen, dass ich seit wir verheiratet sind, …"),
+    question("link", "Schick Pia ein Meme, das sie zum Lachen bringen soll."),
+    question("map", "Markiere den Ort, an dem ihr euch besonders nah gefühlt habt."),
+    question("audio", "Imitiere Pia liebevoll, wenn sie sich über etwas ganz Alltägliches aufregt."),
+    question("text", "Gib eurer Ehe einen Slogan oder Filmtitel."),
+    question("gift", "Lasst euch überraschen :)"),
   ],
 };
 
@@ -116,7 +122,7 @@ function lockedQuip(day, partner, year) {
   return quips[(position + offset) % quips.length];
 }
 function configureMessage() { return `<main class="welcome-shell"><section class="welcome-card"><div class="heart-mark">♥</div><p class="eyebrow">Fast geschafft</p><h1>Die Verbindung fehlt noch.</h1><p class="intro">Trage zuerst die Adresse eures Cloudflare-Workers in <code>config.js</code> ein.</p></section></main>`; }
-function kindLabel(kind) { return ({ text: "Text", choice: "Auswahl", ranking: "Ranking", image: "Foto", audio: "Sprachnachricht", drawing: "Zeichnung", map: "Ort", link: "Link" })[kind] || "Antwort"; }
+function kindLabel(kind) { return ({ text: "Text", choice: "Auswahl", "choice-custom": "Auswahl", ranking: "Ranking", image: "Foto", audio: "Sprachnachricht", drawing: "Zeichnung", "drawing-riddle": "Zeichenrätsel", map: "Ort", link: "Link", gift: "Überraschung" })[kind] || "Antwort"; }
 function mediaKey(answer) { return answer?.payload?.mediaKey || ""; }
 function seededValue(seed) { return Math.abs(Math.sin(seed * 127.1 + 311.7) * 43758.5453) % 1; }
 function triangularFourier(value, modes = 9) {
@@ -227,22 +233,24 @@ function renderCalendar() {
   const doors = shuffledDoorDays(session.partner, state.seasonYear).map((day) => {
     const unlocked = day <= revealed;
     const answer = partnerAnswers[day];
+    const isGift = prompts[other(session.partner)][day - 1].kind === "gift";
     const seen = seenDays.includes(day);
-    const stateClass = !unlocked ? "locked" : answer ? (seen ? "seen" : "new") : "missing";
-    const symbol = !unlocked ? "🔒" : answer ? (seen ? "✓" : "♥") : "◷";
+    const stateClass = !unlocked ? "locked" : isGift || answer ? (seen ? "seen" : "new") : "missing";
+    const symbol = !unlocked ? "🔒" : isGift || answer ? (seen ? "✓" : "♥") : "◷";
     return `<button class="door calendar-door ${stateClass} ${selectedCalendarDay === day ? "active" : ""}" data-calendar-day="${day}">${mountain(day)}<span>${day}</span><b aria-hidden="true">${symbol}</b></button>`;
   }).join("");
   const unlocked = selectedCalendarDay <= revealed;
   const partner = other(session.partner);
   const prompt = prompts[partner][selectedCalendarDay - 1];
   const answer = partnerAnswers[selectedCalendarDay];
-  const detail = !unlocked ? `<div class="locked-copy"><h2>${lockedQuip(selectedCalendarDay, session.partner, state.seasonYear)}</h2><p>Dieses Türchen öffnet sich am ${selectedCalendarDay}. Dezember. Bis dahin bleibt die Überraschung ganz tapfer geheim.</p></div>` : `<p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${answer ? renderAnswer(answer, prompt) : `<section class="waiting-copy"><span>◷</span><p>${name(partner)} hat dieses Türchen noch nicht gefüllt. Vielleicht kommt die Überraschung etwas später.</p></section>`}`;
+  const detail = !unlocked ? `<div class="locked-copy"><h2>${lockedQuip(selectedCalendarDay, session.partner, state.seasonYear)}</h2><p>Dieses Türchen öffnet sich am ${selectedCalendarDay}. Dezember. Bis dahin bleibt die Überraschung ganz tapfer geheim.</p></div>` : prompt.kind === "gift" ? renderGiftCopy() : `<p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${answer ? renderAnswer(answer, prompt) : `<section class="waiting-copy"><span>◷</span><p>${name(partner)} hat dieses Türchen noch nicht gefüllt. Vielleicht kommt die Überraschung etwas später.</p></section>`}`;
   const modal = calendarDetailOpen ? `<section class="calendar-modal" role="dialog" aria-modal="true" aria-labelledby="door-title"><article class="door-detail"><button class="modal-close" type="button" aria-label="Türchen schließen">×</button><div class="detail-top"><p class="eyebrow">${unlocked ? `Türchen ${selectedCalendarDay}` : "Bis bald"}</p><span class="status-pill">${unlocked ? "♥ für dich" : "🔒 verschlossen"}</span></div><div id="door-title">${detail}</div></article></section>` : "";
   return `<section class="calendar-layout calendar-layout--calendar"><nav class="door-grid" aria-label="Deine Adventstürchen">${doors}</nav></section>${modal}<p class="legend calendar-legend"><span class="legend-new">♥</span> neue Überraschung <span class="legend-seen">✓</span> schon angesehen <span class="legend-missing">◷</span> noch offen</p>`;
 }
 
 function renderAnswer(answer, prompt) {
   if (answer.kind === "ranking" && prompt?.options) return renderRankingAnswer(answer, prompt);
+  if (answer.kind === "drawing-riddle") return `<section class="received-note media-answer"><p class="note-label">Ein Zeichenrätsel für dich</p><div class="media-slot image-slot" data-media-kind="image" data-media-key="${escape(mediaKey(answer))}">Wird geladen …</div><form class="riddle-guess" id="riddle-guess-form"><label for="riddle-guess">Was hat ${name(other(state.session.partner))} gezeichnet?</label><div><input id="riddle-guess" class="answer-input" maxlength="240" placeholder="Dein Tipp" required><button class="quiet-button">Tipp prüfen</button></div><p id="riddle-feedback" class="field-hint" aria-live="polite"></p></form></section>`;
   if (answer.kind === "image" || answer.kind === "drawing") return `<section class="received-note media-answer"><p class="note-label">${answer.kind === "drawing" ? "Eine Zeichnung für dich" : "Ein Foto für dich"}</p><div class="media-slot image-slot" data-media-kind="image" data-media-key="${escape(mediaKey(answer))}">Wird geladen …</div></section>`;
   if (answer.kind === "audio") return `<section class="received-note media-answer"><p class="note-label">Eine Sprachnachricht für dich</p><div class="media-slot audio-slot" data-media-kind="audio" data-media-key="${escape(mediaKey(answer))}">Wird geladen …</div></section>`;
   if (answer.kind === "map") {
@@ -283,6 +291,7 @@ function bindCalendar() {
   document.querySelector(".modal-close")?.addEventListener("click", () => { calendarDetailOpen = false; renderApp(); });
   hydrateMedia();
   setupReceivedMaps();
+  setupRiddleGuess();
 }
 
 function renderWorkshop(message = "") {
@@ -290,24 +299,29 @@ function renderWorkshop(message = "") {
   const today = status.phase === "active" ? status.writeDay : status.phase === "complete" ? 25 : 0;
   const doors = shuffledDoorDays(session.partner, state.seasonYear).map((day) => {
     const answer = ownAnswers[day];
-    const stateClass = answer ? "complete" : day < today ? "overdue" : day === today ? "today" : "upcoming";
-    const marker = answer ? "✓" : day < today ? "◷" : day === today ? "•" : "";
+    const isGift = prompts[session.partner][day - 1].kind === "gift";
+    const stateClass = isGift || answer ? "complete" : day < today ? "overdue" : day === today ? "today" : "upcoming";
+    const marker = isGift || answer ? "✓" : day < today ? "◷" : day === today ? "•" : "";
     return `<button class="door workshop-door ${stateClass} ${selectedWorkshopDay === day ? "active" : ""}" data-workshop-day="${day}">${mountain(day)}<span>${day}</span><b aria-hidden="true">${marker}</b></button>`;
   }).join("");
   const prompt = prompts[session.partner][selectedWorkshopDay - 1];
   const answer = ownAnswers[selectedWorkshopDay];
-  return `<section class="calendar-layout workshop-layout"><nav class="door-grid" aria-label="Deine Werkstatt-Türchen">${doors}</nav><article class="door-detail workshop-detail"><div class="detail-top"><p class="eyebrow">Werkstatt · Türchen ${selectedWorkshopDay}</p><span class="status-pill">${answer ? "✓ vorbereitet" : selectedWorkshopDay < today ? "◷ nachholen" : "✦ frei gestaltbar"}</span></div><p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${prompt.hint ? `<p class="prompt-hint">${escape(prompt.hint)}</p>` : ""}${renderEditor(prompt, answer)}${message ? `<p class="save-message">${escape(message)}</p>` : ""}</article></section><p class="legend"><span class="legend-complete">✓</span> vorbereitet <span class="legend-missing">◷</span> nachholen <span class="legend-today">•</span> heute</p>`;
+  const isGift = prompt.kind === "gift";
+  return `<section class="calendar-layout workshop-layout"><nav class="door-grid" aria-label="Deine Werkstatt-Türchen">${doors}</nav><article class="door-detail workshop-detail"><div class="detail-top"><p class="eyebrow">Werkstatt · Türchen ${selectedWorkshopDay}</p><span class="status-pill">${isGift ? "✓ vorbereitet" : answer ? "✓ vorbereitet" : selectedWorkshopDay < today ? "◷ nachholen" : "✦ frei gestaltbar"}</span></div>${isGift ? renderGiftCopy() : `<p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${prompt.hint ? `<p class="prompt-hint">${escape(prompt.hint)}</p>` : ""}${renderEditor(prompt, answer)}${message ? `<p class="save-message">${escape(message)}</p>` : ""}`}</article></section><p class="legend"><span class="legend-complete">✓</span> vorbereitet <span class="legend-missing">◷</span> nachholen <span class="legend-today">•</span> heute</p>`;
 }
+
+function renderGiftCopy() { return `<section class="gift-copy"><span aria-hidden="true">✦</span><h2>Lasst euch überraschen :)</h2><p>Dieses Türchen ist schon für euch vorbereitet.</p></section>`; }
 
 function renderEditor(prompt, answer) {
   const old = answer || {};
   if (prompt.kind === "text") return `<form class="answer-form" id="answer-form"><label for="answer">Deine Antwort für ${name(other(state.session.partner))}</label><textarea id="answer" maxlength="2000" placeholder="Schreib, was dir gerade im Herzen liegt …" required>${escape(old.content || "")}</textarea><div class="answer-footer"><span id="count">${(old.content || "").length}/2000</span><button class="primary-button">Antwort speichern</button></div></form>`;
   if (prompt.kind === "choice") return `<form class="answer-form" id="answer-form"><fieldset class="choice-list"><legend>Deine Wahl für ${name(other(state.session.partner))}</legend>${prompt.options.map((option) => `<label class="choice-option"><input type="radio" name="choice" value="${escape(option)}" ${old.content === option ? "checked" : ""} required><span>${escape(option)}</span></label>`).join("")}</fieldset><button class="primary-button">Antwort speichern</button></form>`;
+  if (prompt.kind === "choice-custom") return `<form class="answer-form" id="answer-form"><fieldset class="choice-list"><legend>Deine Date-Idee für ${name(other(state.session.partner))}</legend>${prompt.options.map((option) => `<label class="choice-option"><input type="radio" name="choice" value="${escape(option)}" ${prompt.options.includes(old.content) ? old.content === option ? "checked" : "" : option === "Eigene Date-Idee" ? "checked" : ""}><span>${escape(option)}</span></label>`).join("")}</fieldset><label for="choice-custom">Oder deine eigene Idee</label><input class="answer-input" id="choice-custom" maxlength="240" placeholder="Zum Beispiel: Plätzchen backen und verschenken" value="${escape(prompt.options.includes(old.content) ? "" : old.content || "")}"><button class="primary-button">Antwort speichern</button></form>`;
   if (prompt.kind === "ranking") return renderRankingEditor(prompt, old);
   if (prompt.kind === "link") return `<form class="answer-form" id="answer-form"><label for="answer">Link für ${name(other(state.session.partner))}</label><input class="answer-input" id="answer" type="url" placeholder="https://…" value="${escape(old.content || "")}" required><p class="field-hint">Spotify, YouTube, Mediathek oder jeder andere Link – ohne Konto-Verknüpfung.</p><button class="primary-button">Link speichern</button></form>`;
   if (prompt.kind === "image") return renderMediaEditor("image", old, "Foto auswählen", "Ein neues Foto ersetzt das bisherige.");
   if (prompt.kind === "audio") return renderMediaEditor("audio", old, "Audiodatei auswählen", "Oder nimm direkt hier eine kurze Nachricht auf.");
-  if (prompt.kind === "drawing") return `<form class="answer-form" id="answer-form"><label>Deine Zeichnung für ${name(other(state.session.partner))}</label>${old.payload?.mediaKey ? `<div class="existing-media" data-media-kind="image" data-media-key="${escape(old.payload.mediaKey)}">Bisherige Zeichnung wird geladen …</div>` : ""}<canvas id="drawing-canvas" width="900" height="560" aria-label="Zeichenfläche"></canvas><div class="draw-tools"><div class="draw-palette" aria-label="Stiftfarbe wählen"><button type="button" class="color-swatch selected" data-color="#941f42" style="--swatch:#941f42" aria-label="Rot"></button><button type="button" class="color-swatch" data-color="#e8b65e" style="--swatch:#e8b65e" aria-label="Gelb"></button><button type="button" class="color-swatch" data-color="#4d8560" style="--swatch:#4d8560" aria-label="Grün"></button><button type="button" class="color-swatch" data-color="#a7d8a5" style="--swatch:#a7d8a5" aria-label="Hellgrün"></button><button type="button" class="color-swatch" data-color="#3f6cae" style="--swatch:#3f6cae" aria-label="Blau"></button><button type="button" class="color-swatch" data-color="#91cde2" style="--swatch:#91cde2" aria-label="Hellblau"></button><button type="button" class="color-swatch" data-color="#8b9199" style="--swatch:#8b9199" aria-label="Grau"></button><button type="button" class="color-swatch" data-color="#261923" style="--swatch:#261923" aria-label="Schwarz"></button><button type="button" class="color-swatch white" data-color="#fffaf5" style="--swatch:#fffaf5" aria-label="Weiß"></button><button type="button" class="color-swatch" data-color="#e7b98d" style="--swatch:#e7b98d" aria-label="Hautfarbe"></button><button type="button" class="color-swatch" data-color="#b77b52" style="--swatch:#b77b52" aria-label="Hellbraun"></button><button type="button" class="eraser-button" id="eraser" aria-label="Radierer">⌫</button></div><label class="brush-size" for="brush-size">Größe <input id="brush-size" type="range" min="3" max="40" value="9"><output id="brush-size-value">9</output></label><button type="button" class="quiet-button" id="clear-drawing">Zeichnung löschen</button></div><p class="field-hint">Mit dem Finger oder der Maus malen. Die Größe gilt auch für den Radierer.</p><button class="primary-button">Zeichnung speichern</button></form>`;
+  if (prompt.kind === "drawing" || prompt.kind === "drawing-riddle") return renderDrawingEditor(prompt, old);
   if (prompt.kind === "map") {
     const location = old.payload || { lat: 52.52, lng: 13.405, label: "" };
     return `<form class="answer-form" id="answer-form"><label for="place-label">Wie möchtest du diesen Ort nennen?</label><input class="answer-input" id="place-label" maxlength="200" placeholder="Zum Beispiel: Unser Lieblingscafé" value="${escape(location.label || "")}" required><div class="map-search"><input class="answer-input" id="map-search" type="search" placeholder="Ort oder Adresse suchen"><button type="button" class="quiet-button" id="search-map">Suchen</button></div><div id="map-search-results" class="map-search-results" aria-live="polite"></div><div id="map-picker" class="map-picker"></div><p class="field-hint" id="map-coordinates">Tippe auf die Karte, um den Ort festzulegen.</p><button type="button" class="quiet-button locate-button" id="locate-me">Meinen aktuellen Standort verwenden</button><button class="primary-button">Ort speichern</button></form>`;
@@ -315,10 +329,17 @@ function renderEditor(prompt, answer) {
   return "";
 }
 
+function renderDrawingEditor(prompt, old) {
+  const isRiddle = prompt.kind === "drawing-riddle";
+  const solution = old.payload?.solution || "";
+  return `<form class="answer-form" id="answer-form"><label>Deine Zeichnung für ${name(other(state.session.partner))}</label>${old.payload?.mediaKey ? `<div class="existing-media" data-media-kind="image" data-media-key="${escape(old.payload.mediaKey)}">Bisherige Zeichnung wird geladen …</div>` : ""}<canvas id="drawing-canvas" width="900" height="560" aria-label="Zeichenfläche"></canvas><div class="draw-tools"><div class="draw-palette" aria-label="Stiftfarbe wählen"><button type="button" class="color-swatch selected" data-color="#941f42" style="--swatch:#941f42" aria-label="Rot"></button><button type="button" class="color-swatch" data-color="#e8b65e" style="--swatch:#e8b65e" aria-label="Gelb"></button><button type="button" class="color-swatch" data-color="#4d8560" style="--swatch:#4d8560" aria-label="Grün"></button><button type="button" class="color-swatch" data-color="#a7d8a5" style="--swatch:#a7d8a5" aria-label="Hellgrün"></button><button type="button" class="color-swatch" data-color="#3f6cae" style="--swatch:#3f6cae" aria-label="Blau"></button><button type="button" class="color-swatch" data-color="#91cde2" style="--swatch:#91cde2" aria-label="Hellblau"></button><button type="button" class="color-swatch" data-color="#8b9199" style="--swatch:#8b9199" aria-label="Grau"></button><button type="button" class="color-swatch" data-color="#261923" style="--swatch:#261923" aria-label="Schwarz"></button><button type="button" class="color-swatch white" data-color="#fffaf5" style="--swatch:#fffaf5" aria-label="Weiß"></button><button type="button" class="color-swatch" data-color="#e7b98d" style="--swatch:#e7b98d" aria-label="Hautfarbe"></button><button type="button" class="color-swatch" data-color="#b77b52" style="--swatch:#b77b52" aria-label="Hellbraun"></button><button type="button" class="eraser-button" id="eraser" aria-label="Radierer">⌫</button></div><label class="brush-size" for="brush-size">Größe <input id="brush-size" type="range" min="3" max="40" value="9"><output id="brush-size-value">9</output></label><button type="button" class="quiet-button" id="clear-drawing">Zeichnung löschen</button></div>${isRiddle ? `<label for="riddle-solution">Was ist es? (Paul sieht die Lösung erst nach einem richtigen Tipp.)</label><input class="answer-input" id="riddle-solution" maxlength="240" value="${escape(solution)}" placeholder="Zum Beispiel: unser Toaster" required>` : ""}<p class="field-hint">Mit dem Finger oder der Maus malen. Die Größe gilt auch für den Radierer.</p><button class="primary-button">Zeichnung speichern</button></form>`;
+}
+
 function renderRankingEditor(prompt, old) {
   const savedOrder = rankingOrder(old.content || "");
   const orderedOptions = savedOrder.length === prompt.options.length ? savedOrder.map((id) => prompt.options.find((option) => option.id === id)).filter(Boolean) : prompt.options;
-  return `<form class="answer-form ranking-form" id="answer-form"><fieldset><legend>Die Häuser</legend><div class="ranking-grid">${prompt.options.map((option) => `<article class="ranking-card"><img src="${escape(option.image)}" alt="${escape(option.label)}"><span>${escape(option.label)}</span></article>`).join("")}</div></fieldset><fieldset><legend>Pauls mögliche Reihenfolge</legend><div class="ranking-list" id="ranking-list" aria-label="Ranking per Ziehen sortieren">${orderedOptions.map((option, index) => `<div class="ranking-row" data-ranking-id="${escape(option.id)}" tabindex="0"><span class="ranking-grip" aria-hidden="true">⠿</span><span class="ranking-place">${index + 1}</span><span class="ranking-label">${escape(option.label)}</span></div>`).join("")}</div></fieldset><p class="field-hint">Ziehe eine Zeile an den Griffpunkten nach oben oder unten. Oben ist Platz 1.</p><button class="primary-button">Ranking speichern</button></form>`;
+  const noun = prompt.options[0]?.id === "sonnenblumen" ? "Blumen" : "Häuser";
+  return `<form class="answer-form ranking-form" id="answer-form"><fieldset><legend>Die ${noun}</legend><div class="ranking-grid">${prompt.options.map((option) => `<article class="ranking-card"><img src="${escape(option.image)}" alt="${escape(option.label)}"><span>${escape(option.label)}</span></article>`).join("")}</div></fieldset><fieldset><legend>Deine mögliche Reihenfolge</legend><div class="ranking-list" id="ranking-list" aria-label="Ranking per Ziehen sortieren">${orderedOptions.map((option, index) => `<div class="ranking-row" data-ranking-id="${escape(option.id)}" tabindex="0"><span class="ranking-grip" aria-hidden="true">⠿</span><span class="ranking-place">${index + 1}</span><span class="ranking-label">${escape(option.label)}</span></div>`).join("")}</div></fieldset><p class="field-hint">Ziehe eine Zeile an den Griffpunkten nach oben oder unten. Oben ist Platz 1.</p><button class="primary-button">Ranking speichern</button></form>`;
 }
 
 function renderMediaEditor(kind, old, label, hint) {
@@ -355,7 +376,7 @@ function bindWorkshop() {
   });
   if (prompt.kind === "audio") setupRecorder();
   if (prompt.kind === "audio") setupAudioFilePreview();
-  if (prompt.kind === "drawing") setupDrawing();
+  if (prompt.kind === "drawing" || prompt.kind === "drawing-riddle") setupDrawing();
   if (prompt.kind === "map") setupMap(answer?.payload);
   if (prompt.kind === "image") setupPhotoPreview();
   if (prompt.kind === "ranking") setupRankingSort();
@@ -367,6 +388,12 @@ async function saveWorkshopAnswer(prompt, previous) {
   let payload = null;
   if (prompt.kind === "text" || prompt.kind === "link") content = document.querySelector("#answer").value;
   if (prompt.kind === "choice") content = document.querySelector('input[name="choice"]:checked')?.value || "";
+  if (prompt.kind === "choice-custom") {
+    const choice = document.querySelector('input[name="choice"]:checked')?.value || "";
+    const custom = document.querySelector("#choice-custom").value.trim();
+    content = choice === "Eigene Date-Idee" ? custom : choice;
+    if (!content) throw new Error("Bitte wähle eine Date-Idee oder schreib deine eigene auf.");
+  }
   if (prompt.kind === "ranking") {
     const ranked = [...document.querySelectorAll("[data-ranking-id]")].map((row) => row.dataset.rankingId);
     if (ranked.length !== 4 || new Set(ranked).size !== 4) throw new Error("Das Ranking braucht vier unterschiedliche Häuser.");
@@ -378,17 +405,40 @@ async function saveWorkshopAnswer(prompt, previous) {
     content = label || "Ein Ort für euch";
     payload = { ...mapLocation, label };
   }
-  if (["image", "audio", "drawing"].includes(prompt.kind)) {
+  if (["image", "audio", "drawing", "drawing-riddle"].includes(prompt.kind)) {
     let file = document.querySelector("#media-file")?.files?.[0] || null;
     if (prompt.kind === "audio" && recordedAudio) file = recordedAudio;
-    if (prompt.kind === "drawing" && drawingDirty) file = await canvasFile();
+    if (["drawing", "drawing-riddle"].includes(prompt.kind) && drawingDirty) file = await canvasFile();
     if (file && prompt.kind === "image") file = await compressPhoto(file);
-    if (file) payload = await uploadMedia(file, prompt.kind);
+    if (file) payload = await uploadMedia(file, prompt.kind === "drawing-riddle" ? "drawing" : prompt.kind);
     else if (previous?.payload?.mediaKey) payload = previous.payload;
     else throw new Error(prompt.kind === "audio" ? "Bitte nimm etwas auf oder wähle eine Audiodatei." : "Bitte wähle oder erstelle ein Bild.");
-    content = prompt.kind === "audio" ? "Eine Sprachnachricht" : prompt.kind === "drawing" ? "Eine Zeichnung" : "Ein Foto";
+    if (prompt.kind === "drawing-riddle") {
+      const solution = document.querySelector("#riddle-solution").value.trim();
+      if (!solution) throw new Error("Schreib bitte die Lösung für dein Zeichenrätsel dazu.");
+      payload = { ...payload, solution };
+    }
+    content = prompt.kind === "audio" ? "Eine Sprachnachricht" : ["drawing", "drawing-riddle"].includes(prompt.kind) ? "Eine Zeichnung" : "Ein Foto";
   }
   return api("/api/answers", { method: "PUT", body: JSON.stringify({ day: selectedWorkshopDay, kind: prompt.kind, content, payload }) });
+}
+
+function setupRiddleGuess() {
+  const form = document.querySelector("#riddle-guess-form");
+  if (!form) return;
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const input = document.querySelector("#riddle-guess");
+    const feedback = document.querySelector("#riddle-feedback");
+    const button = form.querySelector("button");
+    button.disabled = true;
+    try {
+      const result = await api("/api/riddles/guess", { method: "POST", body: JSON.stringify({ day: selectedCalendarDay, guess: input.value }) });
+      feedback.textContent = result.correct ? `Richtig! Es war: ${result.solution}` : "Knapp daneben – versuch’s noch einmal.";
+      feedback.classList.toggle("riddle-correct", Boolean(result.correct));
+    } catch (error) { feedback.textContent = error.message; }
+    button.disabled = false;
+  });
 }
 
 function setupRankingSort() {

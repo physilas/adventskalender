@@ -4,13 +4,13 @@ export interface Env {
 }
 
 type Partner = "pia" | "paul";
-type AnswerKind = "text" | "choice" | "ranking" | "image" | "audio" | "drawing" | "map" | "link";
+type AnswerKind = "text" | "choice" | "choice-custom" | "ranking" | "image" | "audio" | "drawing" | "drawing-riddle" | "map" | "link";
 type Calendar = { id: number; access_code_hash: string; season_year: number; test_day?: number };
 type Session = { partner: Partner };
 type AnswerRow = { day: number; content: string; kind?: string; payload?: string | null; updated_at: string };
 
 const JSON_HEADERS = { "content-type": "application/json; charset=UTF-8" };
-const ANSWER_KINDS: AnswerKind[] = ["text", "choice", "ranking", "image", "audio", "drawing", "map", "link"];
+const ANSWER_KINDS: AnswerKind[] = ["text", "choice", "choice-custom", "ranking", "image", "audio", "drawing", "drawing-riddle", "map", "link"];
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -31,6 +31,7 @@ async function route(request: Request, env: Env, url: URL): Promise<Response> {
   if (path === "/api/setup" && request.method === "POST") return setup(request, env);
   if (path === "/api/session" && request.method === "POST") return signIn(request, env);
   if (path === "/api/answers" && request.method === "PUT") return saveAnswer(request, env);
+  if (path === "/api/riddles/guess" && request.method === "POST") return checkRiddleGuess(request, env);
   if (path === "/api/doors/open" && request.method === "POST") return markDoorSeen(request, env);
   if (path === "/api/media" && request.method === "POST") return uploadMedia(request, env, url);
   if (path.startsWith("/api/media/") && request.method === "GET") return readMedia(request, env, path);
@@ -57,9 +58,27 @@ async function readCalendar(request: Request, env: Env): Promise<Response> {
     seasonYear: calendar.season_year,
     status,
     ownAnswers: Object.fromEntries(own.results.map((row) => [row.day, answerFromRow(row)])),
-    partnerAnswers: Object.fromEntries(received.results.map((row) => [row.day, answerFromRow(row)])),
+    partnerAnswers: Object.fromEntries(received.results.map((row) => [row.day, answerFromRow(row, true)])),
     seenDays: views.results.map((row) => row.day),
   });
+}
+
+async function checkRiddleGuess(request: Request, env: Env): Promise<Response> {
+  const session = await getSession(request, env);
+  const calendar = await getCalendar(env);
+  if (!session || !calendar) return json({ error: "Bitte melde dich zuerst an." }, 401);
+  const body = await request.json() as { day?: number; guess?: string };
+  const status = seasonStatus(calendar, env);
+  if (!Number.isInteger(body.day) || !body.day || body.day < 1 || body.day > status.revealThrough) return json({ error: "Dieses Rätsel ist noch nicht freigeschaltet." }, 400);
+  const guess = body.guess?.trim() ?? "";
+  if (!guess || guess.length > 240) return json({ error: "Schreib bitte einen kurzen Tipp hinein." }, 400);
+  const row = await env.DB.prepare("SELECT day, content, kind, payload, updated_at FROM answers WHERE day = ? AND author = ?").bind(body.day, otherPartner(session.partner)).first<AnswerRow>();
+  if (!row || row.kind !== "drawing-riddle") return json({ error: "Für dieses Türchen gibt es gerade kein Zeichenrätsel." }, 404);
+  const payload = parsePayload(row.payload);
+  const solution = typeof payload?.solution === "string" ? payload.solution : "";
+  if (!solution) return json({ error: "Die Lösung zu diesem Rätsel fehlt noch." }, 400);
+  const correct = normaliseGuess(guess) === normaliseGuess(solution);
+  return json(correct ? { correct: true, solution } : { correct: false });
 }
 
 async function setup(request: Request, env: Env): Promise<Response> {
@@ -187,11 +206,16 @@ function seasonStatus(calendar: Calendar, env: Env) {
   return { writeDay: parts.day, revealThrough: parts.day, phase: "active" };
 }
 
-function answerFromRow(row: AnswerRow) { return { kind: isAnswerKind(row.kind) ? row.kind : "text", content: row.content, payload: parsePayload(row.payload), updatedAt: row.updated_at }; }
+function answerFromRow(row: AnswerRow, hideRiddleSolution = false) {
+  const kind = isAnswerKind(row.kind) ? row.kind : "text";
+  const payload = parsePayload(row.payload);
+  if (hideRiddleSolution && kind === "drawing-riddle" && payload) delete payload.solution;
+  return { kind, content: row.content, payload, updatedAt: row.updated_at };
+}
 function normalisePayload(payload: unknown) { return payload && typeof payload === "object" && !Array.isArray(payload) && JSON.stringify(payload).length <= 4_000 ? payload as Record<string, unknown> : null; }
 function parsePayload(value?: string | null) { try { return value ? JSON.parse(value) : null; } catch { return null; } }
 function isValidAnswer(kind: AnswerKind, content: string, payload: Record<string, unknown> | null) {
-  if (["text", "choice", "ranking", "link"].includes(kind)) {
+  if (["text", "choice", "choice-custom", "ranking", "link"].includes(kind)) {
     if (kind === "ranking") {
       try {
         const ranking = JSON.parse(content);
@@ -202,8 +226,10 @@ function isValidAnswer(kind: AnswerKind, content: string, payload: Record<string
     try { const url = new URL(content); return url.protocol === "https:" || url.protocol === "http:"; } catch { return false; }
   }
   if (kind === "map") return Boolean(payload && typeof payload.lat === "number" && Number.isFinite(payload.lat) && Math.abs(payload.lat) <= 90 && typeof payload.lng === "number" && Number.isFinite(payload.lng) && Math.abs(payload.lng) <= 180);
+  if (kind === "drawing-riddle") return Boolean(payload && typeof payload.mediaKey === "string" && /^media\/[a-f0-9-]+\.[a-z0-9]+$/i.test(payload.mediaKey) && typeof payload.solution === "string" && payload.solution.trim().length > 0 && payload.solution.length <= 240);
   return Boolean(payload && typeof payload.mediaKey === "string" && /^media\/[a-f0-9-]+\.[a-z0-9]+$/i.test(payload.mediaKey));
 }
+function normaliseGuess(value: string) { return value.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLocaleLowerCase("de-DE").replace(/[^\p{L}\p{N}]+/gu, " ").trim(); }
 function berlinDate() {
   const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Berlin", year: "numeric", month: "numeric", day: "numeric" }).formatToParts();
   const values = Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, Number(part.value)]));
