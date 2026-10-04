@@ -29,11 +29,11 @@ Eine kleine Adventskalender-Webapp für zwei Handys — ohne Nutzerkonto für Pi
 5. Kopiere die am Ende ausgegebene `workers.dev`-Adresse nach `config.js` als Wert von `window.ADVENT_API_URL`.
 6. Lege ein GitHub-Repository an, lade den gesamten Inhalt dieses Ordners hoch und aktiviere unter **Settings → Pages → Source: GitHub Actions** GitHub Pages.
 
-Nach dem ersten Push veröffentlicht GitHub die Web-App. Die erste Person richtet dort den Kalender und einen gemeinsamen Schlüssel ein; die zweite Person öffnet denselben Link, wählt ihren Namen und verwendet denselben Schlüssel.
+Nach dem ersten Push veröffentlicht GitHub die Web-App. Die erste Person richtet dort den Adventskalender und einen gemeinsamen Schlüssel ein; die zweite Person öffnet denselben Link, wählt ihren Namen und verwendet denselben Schlüssel.
 
 ## Zwei Bereiche und Antwortformate
 
-- **Dein Kalender** zeigt die bis zum jeweiligen Datum freigeschalteten Überraschungen des Partners. Ein Herz markiert eine neue Überraschung, ein Haken ein bereits angesehenes Türchen und eine Sanduhr eine noch fehlende Antwort.
+- **Dein Adventskalender** zeigt die bis zum jeweiligen Datum freigeschalteten Überraschungen des Partners. Ein Herz markiert eine neue Überraschung, ein Haken ein bereits angesehenes Türchen und eine Sanduhr eine noch fehlende Antwort.
 - **Deine Werkstatt** ist immer vollständig geöffnet. Dort lassen sich alle 24 persönlichen Aufgaben vorbereiten oder nachträglich ergänzen. Ein Haken markiert gespeicherte Beiträge, eine Sanduhr vergangene, noch leere Tage.
 - Neben Text und Auswahlfragen gibt es Fotos, kurze Sprachaufnahmen, Zeichnungen, Ortsmarkierungen auf OpenStreetMap und beliebige Links (zum Beispiel Spotify oder YouTube).
 - Bilder, Zeichnungen und Sprachaufnahmen werden privat in D1 gespeichert. Fotos werden vor dem Upload automatisch verkleinert und komprimiert; wegen der kostenlosen D1-Grenze bleiben Dateien auf **1,8 MB** begrenzt. Für Sprachaufnahmen eignet sich daher eine kurze Nachricht.

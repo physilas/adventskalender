@@ -20,7 +20,7 @@ export default {
       return await withCors(response, request);
     } catch (error) {
       console.error(error);
-      return await withCors(json({ error: "Der Kalender ist gerade nicht erreichbar." }, 500), request);
+      return await withCors(json({ error: "Der Adventskalender ist gerade nicht erreichbar." }, 500), request);
     }
   },
 };
@@ -93,7 +93,7 @@ async function setup(request: Request, env: Env): Promise<Response> {
   const code = body.accessCode?.trim() ?? "";
   if (!isPartner(body.partner) || code.length < 6 || code.length > 80) return json({ error: "Wähle dich aus und verwende einen Schlüssel mit mindestens 6 Zeichen." }, 400);
   const calendar = await getCalendar(env);
-  if (calendar && isCalendarConfigured(calendar)) return json({ error: "Der Kalender wurde bereits eingerichtet." }, 409);
+  if (calendar && isCalendarConfigured(calendar)) return json({ error: "Der Adventskalender wurde bereits eingerichtet." }, 409);
   try {
     const accessCodeHash = await sha256(code);
     const statement = calendar
@@ -104,9 +104,9 @@ async function setup(request: Request, env: Env): Promise<Response> {
         ? env.DB.prepare("INSERT INTO calendar (id, access_code_hash, season_year, test_day, setup_complete) VALUES (1, ?, ?, 1, 1)").bind(accessCodeHash, currentYear())
         : env.DB.prepare("INSERT INTO calendar (id, access_code_hash, season_year, setup_complete) VALUES (1, ?, ?, 1)").bind(accessCodeHash, currentYear());
     const result = await statement.run();
-    if (!result.meta.changes) return json({ error: "Der Kalender wurde bereits eingerichtet." }, 409);
+    if (!result.meta.changes) return json({ error: "Der Adventskalender wurde bereits eingerichtet." }, 409);
   } catch {
-    return json({ error: "Der Kalender wurde bereits eingerichtet." }, 409);
+    return json({ error: "Der Adventskalender wurde bereits eingerichtet." }, 409);
   }
   return json(await issueSession(body.partner, env), 201);
 }
@@ -135,7 +135,7 @@ async function recoverAccess(request: Request, env: Env): Promise<Response> {
   const calendar = await getCalendar(env);
   const recoveryCode = body.recoveryCode?.trim() ?? "";
   const accessCode = body.accessCode?.trim() ?? "";
-  if (!calendar || !isCalendarConfigured(calendar)) return json({ error: "Der Kalender wird noch eingerichtet." }, 409);
+  if (!calendar || !isCalendarConfigured(calendar)) return json({ error: "Der Adventskalender wird noch eingerichtet." }, 409);
   if (accessCode.length < 6 || accessCode.length > 80) return json({ error: "Der neue gemeinsame Schlüssel muss zwischen 6 und 80 Zeichen lang sein." }, 400);
   if (!calendar.recovery_code_hash || await sha256(recoveryCode) !== calendar.recovery_code_hash) return json({ error: "Der Rettungscode stimmt nicht." }, 401);
   await Promise.all([
@@ -148,7 +148,7 @@ async function recoverAccess(request: Request, env: Env): Promise<Response> {
 async function signIn(request: Request, env: Env): Promise<Response> {
   const body = await request.json() as { partner?: Partner; accessCode?: string };
   const calendar = await getCalendar(env);
-  if (!calendar || !isCalendarConfigured(calendar)) return json({ error: "Der Kalender wird noch eingerichtet." }, 409);
+  if (!calendar || !isCalendarConfigured(calendar)) return json({ error: "Der Adventskalender wird noch eingerichtet." }, 409);
   if (!isPartner(body.partner) || !body.accessCode) return json({ error: "Bitte wähle deinen Namen und gib den gemeinsamen Schlüssel ein." }, 400);
   if (await sha256(body.accessCode.trim()) !== calendar.access_code_hash) return json({ error: "Der gemeinsame Schlüssel stimmt nicht." }, 401);
   return json(await issueSession(body.partner, env));
