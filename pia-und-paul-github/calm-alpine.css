@@ -21,6 +21,7 @@ body,
 .welcome-card .intro,
 .welcome-card label,
 .welcome-card .field-hint { color: #45677d; }
+.guide-button { margin-top: 1.15rem; }
 .code-field {
   color: #245b7c;
   border-color: #a8c6d4;
@@ -367,6 +368,37 @@ body,
   background: #010c17a8;
   backdrop-filter: none;
 }
+
+.guide-modal {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  overflow: auto;
+  background: #010c17c7;
+}
+.guide-card {
+  position: relative;
+  width: min(100%, 43rem);
+  max-height: min(52rem, calc(100svh - 2rem));
+  overflow: auto;
+  padding: clamp(1.55rem, 5vw, 3rem);
+  border: 1px solid #d4e2e8;
+  border-radius: 1.35rem;
+  color: #16384f;
+  background: #fcfeff;
+  box-shadow: 0 18px 48px #010b144d;
+  line-height: 1.55;
+}
+.guide-card h2 { margin-right: 2.5rem; }
+.guide-card p { max-width: 38rem; }
+.guide-card .modal-close { position: absolute; top: 1rem; right: 1rem; }
+.guide-steps { display: grid; gap: .7rem; margin: 1.2rem 0; padding-left: 1.35rem; }
+.guide-steps strong { color: #245b7c; }
+.guide-signoff { margin-bottom: 1.35rem; font-style: italic; }
+.guide-card .primary-button { width: auto; min-width: 9rem; }
 
 .modal-close { color: #245b7c; background: #edf6f8; }
 .status-pill,

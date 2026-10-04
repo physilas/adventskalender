@@ -1,6 +1,7 @@
 const API = (window.ADVENT_API_URL || "").replace(/\/$/, "");
 const TEST_MODE = window.ADVENT_DEVELOPER_TEST === true;
 const TOKEN_STORAGE_KEY = TEST_MODE ? "pia-paul-calendar-test-token" : "pia-paul-calendar-token";
+const GUIDE_STORAGE_KEY = TEST_MODE ? "pia-paul-calendar-test-guide-seen" : "pia-paul-calendar-guide-seen";
 const app = document.querySelector("#app");
 const days = Array.from({ length: 24 }, (_, index) => index + 1);
 const question = (kind, prompt, options = [], hint = "") => ({ kind, prompt, options, hint });
@@ -78,6 +79,7 @@ let activeView = "calendar";
 let calendarDetailOpen = false;
 let selectedPartner = "pia";
 let adminMode = new URLSearchParams(window.location.search).get("admin") === "1";
+let guideOpen = !adminMode && localStorage.getItem(GUIDE_STORAGE_KEY) !== "seen";
 let mapPicker = null;
 let mapLocation = null;
 let recorder = null;
@@ -187,6 +189,11 @@ function render() {
   renderApp();
 }
 
+function renderGuide() {
+  if (!guideOpen || adminMode) return "";
+  return `<section class="guide-modal" role="dialog" aria-modal="true" aria-labelledby="guide-title"><article class="guide-card"><button class="modal-close" type="button" id="close-guide" aria-label="Anleitung schließen">×</button><p class="eyebrow">Willkommen</p><h2 id="guide-title">So funktioniert euer Kalender</h2><p>Liebe Pia, lieber Paul,</p><p>bald ist schon die Adventszeit! Und wir haben einen Adventskalender der etwas anderen Art für euch vorbereitet. Und so funktioniert er:</p><ol class="guide-steps"><li>Beim ersten Öffnen legt ihr gemeinsam einen Schlüssel fest. Merkt ihn euch gut und teilt ihn nur miteinander.</li><li>In <strong>Deiner Werkstatt</strong> könnt ihr beide schon jetzt alle 24 Überraschungen für den anderen vorbereiten. Die Fragen sind absichtlich verschieden – so bleibt es spannend. Speichern nicht vergessen!</li><li>In <strong>Deinem Kalender</strong> warten im Dezember die Antworten des anderen hinter den Türchen. Die Türchen öffnen sich passend zum Datum. Ein früher Klick ist erlaubt, aber die Überraschung bleibt dann natürlich noch geheim.</li><li>Solange der andere eine Antwort noch nicht gesehen hat, könnt ihr sie in der Werkstatt wieder zurückziehen und neu machen. Der 24. ist schon vorbereitet – da dürft ihr euch einfach überraschen lassen.</li></ol><p>Und sollte irgendwas nicht klappen oder ihr Support brauchen, meldet euch einfach!</p><p>Wir hoffen, dass ihr genau so viel Spaß damit habt wie wir beim Erstellen! Und wenn es dann soweit ist: Eine wunderschöne erste Adventszeit als Verheiratete!</p><p class="guide-signoff">Eure Janika und Silas</p><button class="primary-button" type="button" id="guide-done">Los geht’s</button></article></section>`;
+}
+
 function renderAccess(message = "") {
   const setup = !state.configured;
   const adminSetup = adminMode && !state.recoveryConfigured;
@@ -199,7 +206,16 @@ function renderAccess(message = "") {
   const title = adminMode ? adminSetup ? "Rettungscode sichern" : recovering ? "Zugang wiederherstellen" : "Bereit für Pia & Paul" : setup ? "Euren Kalender einrichten" : "Willkommen zurück";
   const intro = adminMode ? adminSetup ? "Lege deinen privaten Rettungscode fest. Pia und Paul sehen diese Seite nicht." : recovering ? "Setze mit deinem Rettungscode einen neuen gemeinsamen Schlüssel. Alle bisherigen Sitzungen werden dabei abgemeldet." : "Dein Rettungscode ist gesichert. Pia und Paul können ihren gemeinsamen Schlüssel jetzt unabhängig davon einrichten." : setup ? "Legt euren gemeinsamen Schlüssel fest und teilt ihn anschließend nur miteinander." : "Wähle deinen Namen und öffne euren gemeinsamen Adventskalender.";
   const activeForm = adminMode ? adminSetup ? recoverySetupForm : recovering ? recoveryForm : "" : standardForm;
-  app.innerHTML = `<main class="welcome-shell"><section class="welcome-card"><div class="heart-mark">♥</div><p class="eyebrow">Pia & Paul</p><h1>${title}</h1><p class="intro">${intro}</p>${activeForm ? `<form class="access-form" id="access-form">${activeForm}${message ? `<p class="form-message">${escape(message)}</p>` : ""}</form>` : message ? `<p class="form-message">${escape(message)}</p>` : ""}</section></main>`;
+  const guideButton = !adminMode ? '<button class="quiet-button guide-button" type="button" id="open-guide">Anleitung</button>' : "";
+  app.innerHTML = `<main class="welcome-shell"><section class="welcome-card"><div class="heart-mark">♥</div><p class="eyebrow">Pia & Paul</p><h1>${title}</h1><p class="intro">${intro}</p>${activeForm ? `<form class="access-form" id="access-form">${activeForm}${message ? `<p class="form-message">${escape(message)}</p>` : ""}</form>` : message ? `<p class="form-message">${escape(message)}</p>` : ""}${guideButton}</section></main>${renderGuide()}`;
+  const closeGuide = () => {
+    guideOpen = false;
+    localStorage.setItem(GUIDE_STORAGE_KEY, "seen");
+    renderAccess();
+  };
+  document.querySelector("#open-guide")?.addEventListener("click", () => { guideOpen = true; renderAccess(); });
+  document.querySelector("#close-guide")?.addEventListener("click", closeGuide);
+  document.querySelector("#guide-done")?.addEventListener("click", closeGuide);
   document.querySelectorAll("[data-person]").forEach((button) => button.addEventListener("click", () => { selectedPartner = button.dataset.person; renderAccess(); }));
   document.querySelector("#recover-access")?.addEventListener("click", () => renderAccess("Wendet euch an die Person, von der ihr den Kalender bekommen habt. Sie kann euch mit einem neuen gemeinsamen Schlüssel helfen."));
   document.querySelector("#cancel-recovery")?.addEventListener("click", () => {
