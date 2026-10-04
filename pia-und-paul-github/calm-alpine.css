@@ -88,8 +88,9 @@ body,
 }
 
 .door > b {
-  right: .42rem;
-  bottom: .32rem;
+  z-index: 4;
+  right: -.22rem;
+  bottom: -.22rem;
   display: grid;
   width: 1.3rem;
   height: 1.3rem;
@@ -103,6 +104,9 @@ body,
   line-height: 1;
   text-shadow: none;
 }
+
+.door.calendar-door,
+.door.workshop-door { overflow: visible; }
 
 .calendar-door.new > b { border-color: #c9e2eb; color: #1f7196; background: #ecf8fb; }
 .calendar-door.seen > b,
