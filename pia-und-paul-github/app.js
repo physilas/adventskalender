@@ -101,11 +101,13 @@ function lockedQuip(day, partner, year) {
     "Offenbar sind die Zahlen auf den Türchen für dich eher grobe Empfehlungen.",
     "Hier könnte Ihre Weihnachtswerbung stehen.",
   ];
-  const position = shuffledDoorDays(partner, year).indexOf(day);
-  const row = Math.floor(position / 4);
-  const column = position % 4;
-  // Adjacent tiles always differ by one (horizontal) or three (vertical).
-  return quips[(column + (row * 3) + (partner === "pia" ? 1 : 0)) % quips.length];
+  const order = shuffledDoorDays(partner, year);
+  const position = order.indexOf(day);
+  // A sequential assignment prevents repeated text horizontally, vertically and
+  // across a row break. The final quip stays discoverable on door 24.
+  const finalDoorPosition = order.indexOf(24);
+  const offset = (quips.length - 1 - finalDoorPosition + quips.length) % quips.length;
+  return quips[(position + offset) % quips.length];
 }
 function configureMessage() { return `<main class="welcome-shell"><section class="welcome-card"><div class="heart-mark">♥</div><p class="eyebrow">Fast geschafft</p><h1>Die Verbindung fehlt noch.</h1><p class="intro">Trage zuerst die Adresse eures Cloudflare-Workers in <code>config.js</code> ein.</p></section></main>`; }
 function kindLabel(kind) { return ({ text: "Text", choice: "Auswahl", image: "Foto", audio: "Sprachnachricht", drawing: "Zeichnung", map: "Ort", link: "Link" })[kind] || "Antwort"; }
