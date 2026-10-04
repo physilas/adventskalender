@@ -185,6 +185,47 @@ body,
   box-shadow: 0 10px 28px #365f7412;
 }
 
+/* The workshop sits on a light card: every control gets an explicit ink color. */
+.workshop-detail { color: #16384f; color-scheme: light; }
+.workshop-detail .prompt-hint,
+.workshop-detail .field-hint,
+.workshop-detail .answer-footer,
+.workshop-detail .draw-tools,
+.workshop-detail .brush-size,
+.workshop-detail .voice-recorder span,
+.workshop-detail .upload-preview,
+.workshop-detail .media-slot,
+.workshop-detail .existing-media { color: #5b7688; }
+.workshop-detail textarea,
+.workshop-detail .answer-input,
+.workshop-detail .file-input {
+  border-color: #b9d0dc;
+  color: #16384f;
+  background: #fff;
+}
+.workshop-detail textarea::placeholder,
+.workshop-detail .answer-input::placeholder { color: #6d899a; opacity: 1; }
+.workshop-detail .choice-option,
+.workshop-detail .map-search-results button { color: #16384f; background: #fff; }
+.workshop-detail .choice-option:has(input:checked),
+.workshop-detail .map-search-results button:hover { background: #edf7fa; }
+.workshop-detail .quiet-button { color: #245b7c; }
+.workshop-detail .quiet-button:hover { color: #173f59; }
+.workshop-detail .voice-recorder {
+  border-color: #c6dbe5;
+  background: #f1f8fb;
+}
+.workshop-detail .voice-recorder strong { color: #16384f; }
+.workshop-detail .audio-preview {
+  border-color: #c6dbe5;
+  color: #16384f;
+  background: #f8fcfd;
+}
+.workshop-detail .upload-preview,
+.workshop-detail .media-slot,
+.workshop-detail .existing-media { background: #eef6f9; }
+.workshop-detail .eraser-button { color: #16384f; }
+
 .calendar-modal {
   background: #010c17a8;
   backdrop-filter: none;
