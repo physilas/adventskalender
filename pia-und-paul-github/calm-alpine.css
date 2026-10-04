@@ -94,6 +94,10 @@ body,
 .door.active { border-color: #245b7c !important; background: linear-gradient(180deg, #91cddd 0%, #2e6d91 100%) !important; box-shadow: 0 0 0 2px #d9edf3 !important; }
 
 .mountain-range { height: 77%; opacity: 1; }
+.door .mountain-range {
+  /* Die Statusmarke darf über den Rand ragen, die Berggrafik selbst nicht. */
+  clip-path: inset(0 0 0 0 round 0 0 .62rem .62rem);
+}
 .mountain-range .mountain-far,
 .mountain-range .mountain-mid,
 .mountain-range .mountain-far-contour,
