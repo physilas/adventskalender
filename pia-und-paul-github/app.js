@@ -5,10 +5,10 @@ const app = document.querySelector("#app");
 const days = Array.from({ length: 24 }, (_, index) => index + 1);
 const question = (kind, prompt, options = [], hint = "") => ({ kind, prompt, options, hint });
 const paulHouseRanking = [
-  { id: "waldhuette", label: "Die Berghütte am Waldrand", image: "https://images.unsplash.com/photo-1698213248549-b116da488294?auto=format&fit=crop&w=900&q=82" },
-  { id: "reetdach", label: "Das reetgedeckte Landhaus", image: "https://images.unsplash.com/photo-1682516086739-c3fbf844529b?auto=format&fit=crop&w=900&q=82" },
-  { id: "steinhaus", label: "Das Steinhäuschen mit wildem Garten", image: "https://images.unsplash.com/photo-1688396538097-af54bb314ab6?auto=format&fit=crop&w=900&q=82" },
-  { id: "holzhaus", label: "Das große Holzhaus in den Bergen", image: "https://images.unsplash.com/photo-1506974210756-8e1b8985d348?auto=format&fit=crop&w=900&q=82" },
+  { id: "waldhuette", word: "Waldrand", label: "Die Berghütte am Waldrand", image: "https://images.unsplash.com/photo-1698213248549-b116da488294?auto=format&fit=crop&w=900&q=82" },
+  { id: "reetdach", word: "Reetdach", label: "Das reetgedeckte Landhaus", image: "https://images.unsplash.com/photo-1682516086739-c3fbf844529b?auto=format&fit=crop&w=900&q=82" },
+  { id: "steinhaus", word: "Steingarten", label: "Das Steinhäuschen mit wildem Garten", image: "https://images.unsplash.com/photo-1688396538097-af54bb314ab6?auto=format&fit=crop&w=900&q=82" },
+  { id: "holzhaus", word: "Bergblick", label: "Das große Holzhaus in den Bergen", image: "https://images.unsplash.com/photo-1506974210756-8e1b8985d348?auto=format&fit=crop&w=900&q=82" },
 ];
 const prompts = {
   pia: [
@@ -316,9 +316,9 @@ function renderEditor(prompt, answer) {
 }
 
 function renderRankingEditor(prompt, old) {
-  const order = rankingOrder(old.content || "");
-  const positions = Object.fromEntries(order.map((id, index) => [id, index + 1]));
-  return `<form class="answer-form ranking-form" id="answer-form"><fieldset><legend>Dein Ranking für ${name(other(state.session.partner))}</legend><div class="ranking-grid">${prompt.options.map((option) => `<article class="ranking-card"><img src="${escape(option.image)}" alt="${escape(option.label)}"><h3>${escape(option.label)}</h3><label for="rank-${escape(option.id)}">Platz</label><select id="rank-${escape(option.id)}" data-ranking-option="${escape(option.id)}" required><option value="">–</option>${[1, 2, 3, 4].map((place) => `<option value="${place}" ${positions[option.id] === place ? "selected" : ""}>${place}</option>`).join("")}</select></article>`).join("")}</div></fieldset><p class="field-hint">Jeder Platz darf genau einmal vergeben werden.</p><button class="primary-button">Ranking speichern</button></form>`;
+  const savedOrder = rankingOrder(old.content || "");
+  const orderedOptions = savedOrder.length === prompt.options.length ? savedOrder.map((id) => prompt.options.find((option) => option.id === id)).filter(Boolean) : prompt.options;
+  return `<form class="answer-form ranking-form" id="answer-form"><fieldset><legend>Die Häuser</legend><div class="ranking-grid">${prompt.options.map((option) => `<article class="ranking-card"><img src="${escape(option.image)}" alt="${escape(option.label)}"><span>${escape(option.word)}</span></article>`).join("")}</div></fieldset><fieldset><legend>Pauls mögliche Reihenfolge</legend><div class="ranking-list" id="ranking-list" aria-label="Ranking per Ziehen sortieren">${orderedOptions.map((option, index) => `<div class="ranking-row" data-ranking-id="${escape(option.id)}" tabindex="0"><span class="ranking-grip" aria-hidden="true">⠿</span><span class="ranking-place">${index + 1}</span><span class="ranking-label">${escape(option.label)}</span></div>`).join("")}</div></fieldset><p class="field-hint">Ziehe eine Zeile an den Griffpunkten nach oben oder unten. Oben ist Platz 1.</p><button class="primary-button">Ranking speichern</button></form>`;
 }
 
 function renderMediaEditor(kind, old, label, hint) {
@@ -358,6 +358,7 @@ function bindWorkshop() {
   if (prompt.kind === "drawing") setupDrawing();
   if (prompt.kind === "map") setupMap(answer?.payload);
   if (prompt.kind === "image") setupPhotoPreview();
+  if (prompt.kind === "ranking") setupRankingSort();
   hydrateMedia();
 }
 
@@ -367,10 +368,9 @@ async function saveWorkshopAnswer(prompt, previous) {
   if (prompt.kind === "text" || prompt.kind === "link") content = document.querySelector("#answer").value;
   if (prompt.kind === "choice") content = document.querySelector('input[name="choice"]:checked')?.value || "";
   if (prompt.kind === "ranking") {
-    const ranked = [...document.querySelectorAll("[data-ranking-option]")].map((select) => ({ id: select.dataset.rankingOption, place: Number(select.value) }));
-    const places = ranked.map((entry) => entry.place);
-    if (ranked.length !== 4 || places.some((place) => !place) || new Set(places).size !== 4) throw new Error("Bitte vergib jeden Platz von 1 bis 4 genau einmal.");
-    content = JSON.stringify(ranked.sort((left, right) => left.place - right.place).map((entry) => entry.id));
+    const ranked = [...document.querySelectorAll("[data-ranking-id]")].map((row) => row.dataset.rankingId);
+    if (ranked.length !== 4 || new Set(ranked).size !== 4) throw new Error("Das Ranking braucht vier unterschiedliche Häuser.");
+    content = JSON.stringify(ranked);
   }
   if (prompt.kind === "map") {
     if (!mapLocation) throw new Error("Bitte wähle einen Punkt auf der Karte.");
@@ -389,6 +389,37 @@ async function saveWorkshopAnswer(prompt, previous) {
     content = prompt.kind === "audio" ? "Eine Sprachnachricht" : prompt.kind === "drawing" ? "Eine Zeichnung" : "Ein Foto";
   }
   return api("/api/answers", { method: "PUT", body: JSON.stringify({ day: selectedWorkshopDay, kind: prompt.kind, content, payload }) });
+}
+
+function setupRankingSort() {
+  const list = document.querySelector("#ranking-list");
+  if (!list) return;
+  let dragged = null;
+  const updatePlaces = () => list.querySelectorAll(".ranking-row").forEach((row, index) => row.querySelector(".ranking-place").textContent = String(index + 1));
+  const finish = () => {
+    if (!dragged) return;
+    dragged.classList.remove("dragging");
+    dragged = null;
+    updatePlaces();
+  };
+  list.addEventListener("pointerdown", (event) => {
+    const row = event.target.closest(".ranking-row");
+    if (!row) return;
+    dragged = row;
+    row.classList.add("dragging");
+    list.setPointerCapture?.(event.pointerId);
+    event.preventDefault();
+  });
+  list.addEventListener("pointermove", (event) => {
+    if (!dragged) return;
+    const target = document.elementFromPoint(event.clientX, event.clientY)?.closest(".ranking-row");
+    if (!target || target === dragged || !list.contains(target)) return;
+    const bounds = target.getBoundingClientRect();
+    list.insertBefore(dragged, event.clientY < bounds.top + bounds.height / 2 ? target : target.nextSibling);
+    updatePlaces();
+  });
+  list.addEventListener("pointerup", finish);
+  list.addEventListener("pointercancel", finish);
 }
 
 async function uploadMedia(file, kind) {
