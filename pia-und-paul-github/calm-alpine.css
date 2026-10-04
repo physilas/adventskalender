@@ -44,14 +44,17 @@ body,
 .view-switch button.selected { color: #fff; background: #245b7c; box-shadow: none; }
 
 .developer-panel {
-  border-color: #9dc4d485;
+  border-color: #9dc4d485 !important;
   color: #ddedf5;
-  background: #071d31cc;
+  background: #071d31cc !important;
   box-shadow: 0 8px 24px #020b1459;
 }
 .developer-panel .eyebrow,
 .developer-panel .quiet-button { color: #b9d8e6; }
 .developer-panel .quiet-button { background: #b8dceb; }
+.developer-panel label,
+.developer-panel > p:last-child { color: #ddedf5; }
+.developer-panel .test-day-controls select { color: #16384f; }
 
 .calendar-layout--calendar { width: min(100%, 48rem); }
 .door-grid { gap: .72rem; }
