@@ -1,13 +1,13 @@
 .door > span {
   position: absolute;
   z-index: 2;
-  top: .34rem;
+  top: .52rem;
   left: 50%;
   color: #fff;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: ui-rounded, "Arial Rounded MT Bold", "Avenir Next Rounded", "Trebuchet MS", sans-serif;
   font-size: clamp(1rem, 3vw, 1.45rem);
-  font-weight: 600;
-  letter-spacing: -.045em;
+  font-weight: 700;
+  letter-spacing: -.025em;
   line-height: 1;
   text-shadow: 0 1px 4px #0c4265b3;
   transform: translateX(-50%);
