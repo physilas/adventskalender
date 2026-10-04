@@ -79,6 +79,28 @@ function other(partner) { return partner === "pia" ? "paul" : "pia"; }
 function name(partner) { return partner === "pia" ? "Pia" : "Paul"; }
 function escape(value = "") { return String(value).replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]); }
 function token() { return localStorage.getItem(TOKEN_STORAGE_KEY) || ""; }
+function shuffledDoorDays(partner, year) {
+  // Deterministic shuffle: festive disorder, but positions do not jump on re-render.
+  let seed = [...`${partner}-${year}`].reduce((value, char) => ((value * 31) + char.charCodeAt(0)) >>> 0, 2026);
+  const order = [...days];
+  for (let index = order.length - 1; index > 0; index -= 1) {
+    seed = ((seed * 1664525) + 1013904223) >>> 0;
+    const swapIndex = seed % (index + 1);
+    [order[index], order[swapIndex]] = [order[swapIndex], order[index]];
+  }
+  return order;
+}
+function lockedQuip(day) {
+  const quips = [
+    "Erwischt! Was bist du denn für ein Schlingel!",
+    "Da ist aber jemand ungeduldig …",
+    "Psst – dieses Türchen übt noch seinen großen Auftritt.",
+    "Fast! Die Überraschung versteckt sich noch hinter dem Bergkamm.",
+    "So viel Vorfreude steht dir ausgezeichnet.",
+    "Ein bisschen Geduld, du Herzensmensch – kein Advents-Express!",
+  ];
+  return quips[(day - 1) % quips.length];
+}
 function configureMessage() { return `<main class="welcome-shell"><section class="welcome-card"><div class="heart-mark">♥</div><p class="eyebrow">Fast geschafft</p><h1>Die Verbindung fehlt noch.</h1><p class="intro">Trage zuerst die Adresse eures Cloudflare-Workers in <code>config.js</code> ein.</p></section></main>`; }
 function kindLabel(kind) { return ({ text: "Text", choice: "Auswahl", image: "Foto", audio: "Sprachnachricht", drawing: "Zeichnung", map: "Ort", link: "Link" })[kind] || "Antwort"; }
 function mediaKey(answer) { return answer?.payload?.mediaKey || ""; }
@@ -188,19 +210,19 @@ function bindDeveloperControls() {
 function renderCalendar() {
   const { session, status, partnerAnswers = {}, seenDays = [] } = state;
   const revealed = status.revealThrough || 0;
-  const doors = days.map((day) => {
+  const doors = shuffledDoorDays(session.partner, state.seasonYear).map((day) => {
     const unlocked = day <= revealed;
     const answer = partnerAnswers[day];
     const seen = seenDays.includes(day);
     const stateClass = !unlocked ? "locked" : answer ? (seen ? "seen" : "new") : "missing";
     const symbol = !unlocked ? "🔒" : answer ? (seen ? "✓" : "♥") : "◷";
-    return `<button class="door calendar-door ${stateClass} ${selectedCalendarDay === day ? "active" : ""}" data-calendar-day="${day}" ${unlocked ? "" : "disabled"}>${mountain(day)}<span>${day}</span><b aria-hidden="true">${symbol}</b></button>`;
+    return `<button class="door calendar-door ${stateClass} ${selectedCalendarDay === day ? "active" : ""}" data-calendar-day="${day}">${mountain(day)}<span>${day}</span><b aria-hidden="true">${symbol}</b></button>`;
   }).join("");
   const unlocked = selectedCalendarDay <= revealed;
   const partner = other(session.partner);
   const prompt = prompts[partner][selectedCalendarDay - 1];
   const answer = partnerAnswers[selectedCalendarDay];
-  const detail = !unlocked ? `<div class="locked-copy"><h2>Noch ein wenig Geduld.</h2><p>Dieses Türchen öffnet sich an seinem Dezembertag.</p></div>` : `<p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${answer ? renderAnswer(answer) : `<section class="waiting-copy"><span>◷</span><p>${name(partner)} hat dieses Türchen noch nicht gefüllt. Vielleicht kommt die Überraschung etwas später.</p></section>`}`;
+  const detail = !unlocked ? `<div class="locked-copy"><h2>${lockedQuip(selectedCalendarDay)}</h2><p>Dieses Türchen öffnet sich am ${selectedCalendarDay}. Dezember. Bis dahin bleibt die Überraschung ganz tapfer geheim.</p></div>` : `<p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${answer ? renderAnswer(answer) : `<section class="waiting-copy"><span>◷</span><p>${name(partner)} hat dieses Türchen noch nicht gefüllt. Vielleicht kommt die Überraschung etwas später.</p></section>`}`;
   const modal = calendarDetailOpen ? `<section class="calendar-modal" role="dialog" aria-modal="true" aria-labelledby="door-title"><article class="door-detail"><button class="modal-close" type="button" aria-label="Türchen schließen">×</button><div class="detail-top"><p class="eyebrow">${unlocked ? `Türchen ${selectedCalendarDay}` : "Bis bald"}</p><span class="status-pill">${unlocked ? "♥ für dich" : "🔒 verschlossen"}</span></div><div id="door-title">${detail}</div></article></section>` : "";
   return `<section class="calendar-layout calendar-layout--calendar"><nav class="door-grid" aria-label="Deine Adventstürchen">${doors}</nav></section>${modal}<p class="legend calendar-legend"><span class="legend-new">♥</span> neue Überraschung <span class="legend-seen">✓</span> schon angesehen <span class="legend-missing">◷</span> noch offen</p>`;
 }
@@ -221,7 +243,8 @@ function bindCalendar() {
   document.querySelectorAll("[data-calendar-day]").forEach((button) => button.addEventListener("click", async () => {
     selectedCalendarDay = Number(button.dataset.calendarDay);
     calendarDetailOpen = true;
-    if (!state.seenDays.includes(selectedCalendarDay)) {
+    const unlocked = selectedCalendarDay <= (state.status.revealThrough || 0);
+    if (unlocked && !state.seenDays.includes(selectedCalendarDay)) {
       state.seenDays.push(selectedCalendarDay);
       api("/api/doors/open", { method: "POST", body: JSON.stringify({ day: selectedCalendarDay }) }).catch(() => state.seenDays = state.seenDays.filter((day) => day !== selectedCalendarDay));
     }
@@ -235,7 +258,7 @@ function bindCalendar() {
 function renderWorkshop(message = "") {
   const { session, status, ownAnswers = {} } = state;
   const today = status.phase === "active" ? status.writeDay : status.phase === "complete" ? 25 : 0;
-  const doors = days.map((day) => {
+  const doors = shuffledDoorDays(session.partner, state.seasonYear).map((day) => {
     const answer = ownAnswers[day];
     const stateClass = answer ? "complete" : day < today ? "overdue" : day === today ? "today" : "upcoming";
     const marker = answer ? "✓" : day < today ? "◷" : day === today ? "•" : "";
