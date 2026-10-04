@@ -90,9 +90,26 @@ body,
 .door > b {
   right: .42rem;
   bottom: .32rem;
-  color: #f9fcfd;
+  display: grid;
+  width: 1.3rem;
+  height: 1.3rem;
+  place-items: center;
+  border: 1px solid #d4e4eb;
+  border-radius: 50%;
+  color: #48758b;
+  background: #fafdfe;
+  box-shadow: 0 1px 3px #23495c26;
+  font-size: .72rem;
+  line-height: 1;
   text-shadow: none;
 }
+
+.calendar-door.new > b { border-color: #c9e2eb; color: #1f7196; background: #ecf8fb; }
+.calendar-door.seen > b,
+.workshop-door.complete > b { border-color: #cde4d8; color: #387659; background: #eff9f3; }
+.calendar-door.missing > b,
+.workshop-door.overdue > b { border-color: #ead9ad; color: #9c6a18; background: #fff9e9; }
+.door.locked > b { border-color: #d8e3e8; color: #7893a1; background: #f3f8fa; }
 
 .brand,
 .eyebrow,
