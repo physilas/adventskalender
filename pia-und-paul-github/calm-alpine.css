@@ -1,20 +1,26 @@
 :root {
-  --ink: #16384f;
-  --muted: #607d8e;
+  --ink: #eaf6fb;
+  --muted: #bbd2df;
   --wine: #245b7c;
   --wine-dark: #173f59;
-  --paper: #f8fbfc;
-  --cream: #eef5f7;
-  --line: #d3e2e8;
+  --paper: #061523;
+  --cream: #0a1f32;
+  --line: #6990a6;
 }
 
 body,
 .app-shell {
-  background: #f8fbfc;
+  background-color: #061523;
 }
 
 .app-shell {
-  background-image: none;
+  background-image:
+    linear-gradient(180deg, #03102166 0%, #061523a6 100%),
+    url("https://images.unsplash.com/photo-1593959734793-6e92d102da1e?auto=format&fit=crop&w=2400&q=85");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-attachment: fixed;
 }
 
 .topbar,
@@ -27,11 +33,25 @@ body,
 }
 
 .topbar { padding-top: 1.35rem; }
+.brand,
+.hero-row h1 { color: #f7fcff; }
 .hero-row { margin-top: clamp(1.8rem, 4vw, 3.25rem); margin-bottom: 1.35rem; }
-.hero-note { color: #6d8796; }
-.view-switch { border-color: #d4e2e8; background: #f2f7f9; box-shadow: none; }
-.view-switch button { color: #648091; }
-.view-switch button.selected { background: #245b7c; box-shadow: none; }
+.hero-note { color: #c6dae5; }
+.quiet-button { color: #c6dae5; }
+.quiet-button:hover { color: #fff; }
+.view-switch { border-color: #9ec3d477; background: #061d31ad; box-shadow: 0 8px 24px #020b1473; }
+.view-switch button { color: #c6dae5; }
+.view-switch button.selected { color: #fff; background: #245b7c; box-shadow: none; }
+
+.developer-panel {
+  border-color: #9dc4d485;
+  color: #ddedf5;
+  background: #071d31cc;
+  box-shadow: 0 8px 24px #020b1459;
+}
+.developer-panel .eyebrow,
+.developer-panel .quiet-button { color: #b9d8e6; }
+.developer-panel .quiet-button { background: #b8dceb; }
 
 .calendar-layout--calendar { width: min(100%, 48rem); }
 .door-grid { gap: .72rem; }
@@ -130,12 +150,13 @@ body,
 .door-detail,
 .calendar-modal .door-detail {
   border-color: #d4e2e8;
+  color: #16384f;
   background: #fcfeff;
   box-shadow: 0 10px 28px #365f7412;
 }
 
 .calendar-modal {
-  background: #eaf2f5e8;
+  background: #010c17a8;
   backdrop-filter: none;
 }
 
@@ -144,7 +165,7 @@ body,
 .answer-kind { color: #356d88; background: #e9f4f7; }
 .received-note { border-color: #d5e5eb; background: #f3f8fa; }
 .received-map { border-color: #d2e2e8; background: #eaf3f6; }
-.calendar-legend { color: #78909e; }
+.calendar-legend { color: #e3f1f7; text-shadow: 0 1px 4px #020b14; }
 
 @media (max-width: 700px) {
   .calendar-shell .view-switch { background: #f1f6f8; }
