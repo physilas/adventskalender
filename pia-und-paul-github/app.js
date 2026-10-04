@@ -193,16 +193,16 @@ function renderCalendar() {
     const answer = partnerAnswers[day];
     const seen = seenDays.includes(day);
     const stateClass = !unlocked ? "locked" : answer ? (seen ? "seen" : "new") : "missing";
-    const symbol = !unlocked ? "⌘" : answer ? (seen ? "✓" : "♥") : "⌛";
+    const symbol = !unlocked ? "🔒" : answer ? (seen ? "✓" : "♥") : "◷";
     return `<button class="door calendar-door ${stateClass} ${selectedCalendarDay === day ? "active" : ""}" data-calendar-day="${day}" ${unlocked ? "" : "disabled"}>${mountain(day)}<span>${day}</span><b aria-hidden="true">${symbol}</b></button>`;
   }).join("");
   const unlocked = selectedCalendarDay <= revealed;
   const partner = other(session.partner);
   const prompt = prompts[partner][selectedCalendarDay - 1];
   const answer = partnerAnswers[selectedCalendarDay];
-  const detail = !unlocked ? `<div class="locked-copy"><h2>Noch ein wenig Geduld.</h2><p>Dieses Türchen öffnet sich an seinem Dezembertag.</p></div>` : `<p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${answer ? renderAnswer(answer) : `<section class="waiting-copy"><span>⌛</span><p>${name(partner)} hat dieses Türchen noch nicht gefüllt. Vielleicht kommt die Überraschung etwas später.</p></section>`}`;
-  const modal = calendarDetailOpen ? `<section class="calendar-modal" role="dialog" aria-modal="true" aria-labelledby="door-title"><article class="door-detail"><button class="modal-close" type="button" aria-label="Türchen schließen">×</button><div class="detail-top"><p class="eyebrow">${unlocked ? `Türchen ${selectedCalendarDay}` : "Bis bald"}</p><span class="status-pill">${unlocked ? "♥ für dich" : "⌘ verschlossen"}</span></div><div id="door-title">${detail}</div></article></section>` : "";
-  return `<section class="calendar-layout calendar-layout--calendar"><nav class="door-grid" aria-label="Deine Adventstürchen">${doors}</nav></section>${modal}<p class="legend calendar-legend"><span class="legend-new">♥</span> neue Überraschung <span class="legend-seen">✓</span> schon angesehen <span class="legend-missing">⌛</span> noch offen</p>`;
+  const detail = !unlocked ? `<div class="locked-copy"><h2>Noch ein wenig Geduld.</h2><p>Dieses Türchen öffnet sich an seinem Dezembertag.</p></div>` : `<p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${answer ? renderAnswer(answer) : `<section class="waiting-copy"><span>◷</span><p>${name(partner)} hat dieses Türchen noch nicht gefüllt. Vielleicht kommt die Überraschung etwas später.</p></section>`}`;
+  const modal = calendarDetailOpen ? `<section class="calendar-modal" role="dialog" aria-modal="true" aria-labelledby="door-title"><article class="door-detail"><button class="modal-close" type="button" aria-label="Türchen schließen">×</button><div class="detail-top"><p class="eyebrow">${unlocked ? `Türchen ${selectedCalendarDay}` : "Bis bald"}</p><span class="status-pill">${unlocked ? "♥ für dich" : "🔒 verschlossen"}</span></div><div id="door-title">${detail}</div></article></section>` : "";
+  return `<section class="calendar-layout calendar-layout--calendar"><nav class="door-grid" aria-label="Deine Adventstürchen">${doors}</nav></section>${modal}<p class="legend calendar-legend"><span class="legend-new">♥</span> neue Überraschung <span class="legend-seen">✓</span> schon angesehen <span class="legend-missing">◷</span> noch offen</p>`;
 }
 
 function renderAnswer(answer) {
@@ -238,12 +238,12 @@ function renderWorkshop(message = "") {
   const doors = days.map((day) => {
     const answer = ownAnswers[day];
     const stateClass = answer ? "complete" : day < today ? "overdue" : day === today ? "today" : "upcoming";
-    const marker = answer ? "✓" : day < today ? "⌛" : day === today ? "•" : "";
+    const marker = answer ? "✓" : day < today ? "◷" : day === today ? "•" : "";
     return `<button class="door workshop-door ${stateClass} ${selectedWorkshopDay === day ? "active" : ""}" data-workshop-day="${day}">${mountain(day)}<span>${day}</span><b aria-hidden="true">${marker}</b></button>`;
   }).join("");
   const prompt = prompts[session.partner][selectedWorkshopDay - 1];
   const answer = ownAnswers[selectedWorkshopDay];
-  return `<section class="calendar-layout workshop-layout"><nav class="door-grid" aria-label="Deine Werkstatt-Türchen">${doors}</nav><article class="door-detail workshop-detail"><div class="detail-top"><p class="eyebrow">Werkstatt · Türchen ${selectedWorkshopDay}</p><span class="status-pill">${answer ? "✓ vorbereitet" : selectedWorkshopDay < today ? "⌛ nachholen" : "✦ frei gestaltbar"}</span></div><p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${prompt.hint ? `<p class="prompt-hint">${escape(prompt.hint)}</p>` : ""}${renderEditor(prompt, answer)}${message ? `<p class="save-message">${escape(message)}</p>` : ""}</article></section><p class="legend"><span class="legend-complete">✓</span> vorbereitet <span class="legend-missing">⌛</span> nachholen <span class="legend-today">•</span> heute</p>`;
+  return `<section class="calendar-layout workshop-layout"><nav class="door-grid" aria-label="Deine Werkstatt-Türchen">${doors}</nav><article class="door-detail workshop-detail"><div class="detail-top"><p class="eyebrow">Werkstatt · Türchen ${selectedWorkshopDay}</p><span class="status-pill">${answer ? "✓ vorbereitet" : selectedWorkshopDay < today ? "◷ nachholen" : "✦ frei gestaltbar"}</span></div><p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${prompt.hint ? `<p class="prompt-hint">${escape(prompt.hint)}</p>` : ""}${renderEditor(prompt, answer)}${message ? `<p class="save-message">${escape(message)}</p>` : ""}</article></section><p class="legend"><span class="legend-complete">✓</span> vorbereitet <span class="legend-missing">◷</span> nachholen <span class="legend-today">•</span> heute</p>`;
 }
 
 function renderEditor(prompt, answer) {
