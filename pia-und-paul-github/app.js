@@ -90,7 +90,7 @@ function shuffledDoorDays(partner, year) {
   }
   return order;
 }
-function lockedQuip(day) {
+function lockedQuip(day, partner, year) {
   const quips = [
     "Erwischt! Was bist du denn für ein Schlingel!",
     "Da ist aber jemand ungeduldig …",
@@ -98,8 +98,13 @@ function lockedQuip(day) {
     "Fast! Die Überraschung versteckt sich noch hinter dem Bergkamm.",
     "So viel Vorfreude steht dir ausgezeichnet.",
     "Frecher Versuch. Der Kalender bleibt leider unbestechlich.",
+    "Offenbar sind Adventstage für dich eher grobe Empfehlungen.",
   ];
-  return quips[(day - 1) % quips.length];
+  const position = shuffledDoorDays(partner, year).indexOf(day);
+  const row = Math.floor(position / 4);
+  const column = position % 4;
+  // Adjacent tiles always differ by one (horizontal) or three (vertical).
+  return quips[(column + (row * 3) + (partner === "pia" ? 1 : 0)) % quips.length];
 }
 function configureMessage() { return `<main class="welcome-shell"><section class="welcome-card"><div class="heart-mark">♥</div><p class="eyebrow">Fast geschafft</p><h1>Die Verbindung fehlt noch.</h1><p class="intro">Trage zuerst die Adresse eures Cloudflare-Workers in <code>config.js</code> ein.</p></section></main>`; }
 function kindLabel(kind) { return ({ text: "Text", choice: "Auswahl", image: "Foto", audio: "Sprachnachricht", drawing: "Zeichnung", map: "Ort", link: "Link" })[kind] || "Antwort"; }
@@ -222,7 +227,7 @@ function renderCalendar() {
   const partner = other(session.partner);
   const prompt = prompts[partner][selectedCalendarDay - 1];
   const answer = partnerAnswers[selectedCalendarDay];
-  const detail = !unlocked ? `<div class="locked-copy"><h2>${lockedQuip(selectedCalendarDay)}</h2><p>Dieses Türchen öffnet sich am ${selectedCalendarDay}. Dezember. Bis dahin bleibt die Überraschung ganz tapfer geheim.</p></div>` : `<p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${answer ? renderAnswer(answer) : `<section class="waiting-copy"><span>◷</span><p>${name(partner)} hat dieses Türchen noch nicht gefüllt. Vielleicht kommt die Überraschung etwas später.</p></section>`}`;
+  const detail = !unlocked ? `<div class="locked-copy"><h2>${lockedQuip(selectedCalendarDay, session.partner, state.seasonYear)}</h2><p>Dieses Türchen öffnet sich am ${selectedCalendarDay}. Dezember. Bis dahin bleibt die Überraschung ganz tapfer geheim.</p></div>` : `<p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${answer ? renderAnswer(answer) : `<section class="waiting-copy"><span>◷</span><p>${name(partner)} hat dieses Türchen noch nicht gefüllt. Vielleicht kommt die Überraschung etwas später.</p></section>`}`;
   const modal = calendarDetailOpen ? `<section class="calendar-modal" role="dialog" aria-modal="true" aria-labelledby="door-title"><article class="door-detail"><button class="modal-close" type="button" aria-label="Türchen schließen">×</button><div class="detail-top"><p class="eyebrow">${unlocked ? `Türchen ${selectedCalendarDay}` : "Bis bald"}</p><span class="status-pill">${unlocked ? "♥ für dich" : "🔒 verschlossen"}</span></div><div id="door-title">${detail}</div></article></section>` : "";
   return `<section class="calendar-layout calendar-layout--calendar"><nav class="door-grid" aria-label="Deine Adventstürchen">${doors}</nav></section>${modal}<p class="legend calendar-legend"><span class="legend-new">♥</span> neue Überraschung <span class="legend-seen">✓</span> schon angesehen <span class="legend-missing">◷</span> noch offen</p>`;
 }
