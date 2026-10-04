@@ -30,6 +30,7 @@ async function route(request: Request, env: Env, url: URL): Promise<Response> {
   if (path === "/api/calendar" && request.method === "GET") return readCalendar(request, env);
   if (path === "/api/setup" && request.method === "POST") return setup(request, env);
   if (path === "/api/session" && request.method === "POST") return signIn(request, env);
+  if (path === "/api/recovery/setup" && request.method === "POST") return configureRecovery(request, env);
   if (path === "/api/recovery" && request.method === "POST") return recoverAccess(request, env);
   if (path === "/api/answers" && request.method === "PUT") return saveAnswer(request, env);
   if (path.startsWith("/api/answers/") && request.method === "DELETE") return retractAnswer(request, env, path);
@@ -45,7 +46,7 @@ async function readCalendar(request: Request, env: Env): Promise<Response> {
   const calendar = await getCalendar(env);
   if (!calendar) return json({ configured: false });
   const session = await getSession(request, env);
-  if (!session) return json({ configured: true, session: null, seasonYear: calendar.season_year });
+  if (!session) return json({ configured: true, session: null, seasonYear: calendar.season_year, recoveryConfigured: Boolean(calendar.recovery_code_hash) });
 
   const status = seasonStatus(calendar, env);
   const partner = otherPartner(session.partner);
@@ -87,21 +88,30 @@ async function checkRiddleGuess(request: Request, env: Env): Promise<Response> {
 }
 
 async function setup(request: Request, env: Env): Promise<Response> {
-  const body = await request.json() as { partner?: Partner; accessCode?: string; recoveryCode?: string };
+  const body = await request.json() as { partner?: Partner; accessCode?: string };
   const code = body.accessCode?.trim() ?? "";
-  const recoveryCode = body.recoveryCode?.trim() ?? "";
   if (!isPartner(body.partner) || code.length < 6 || code.length > 80) return json({ error: "Wähle dich aus und verwende einen Schlüssel mit mindestens 6 Zeichen." }, 400);
-  if (recoveryCode.length < 10 || recoveryCode.length > 80) return json({ error: "Der Rettungscode muss zwischen 10 und 80 Zeichen lang sein." }, 400);
   if (await getCalendar(env)) return json({ error: "Der Kalender wurde bereits eingerichtet." }, 409);
   try {
     const statement = isTestEnvironment(env)
-      ? env.DB.prepare("INSERT INTO calendar (id, access_code_hash, recovery_code_hash, season_year, test_day) VALUES (1, ?, ?, ?, 1)").bind(await sha256(code), await sha256(recoveryCode), currentYear())
-      : env.DB.prepare("INSERT INTO calendar (id, access_code_hash, recovery_code_hash, season_year) VALUES (1, ?, ?, ?)").bind(await sha256(code), await sha256(recoveryCode), currentYear());
+      ? env.DB.prepare("INSERT INTO calendar (id, access_code_hash, season_year, test_day) VALUES (1, ?, ?, 1)").bind(await sha256(code), currentYear())
+      : env.DB.prepare("INSERT INTO calendar (id, access_code_hash, season_year) VALUES (1, ?, ?)").bind(await sha256(code), currentYear());
     await statement.run();
   } catch {
     return json({ error: "Der Kalender wurde bereits eingerichtet." }, 409);
   }
   return json(await issueSession(body.partner, env), 201);
+}
+
+async function configureRecovery(request: Request, env: Env): Promise<Response> {
+  const body = await request.json() as { recoveryCode?: string };
+  const calendar = await getCalendar(env);
+  const recoveryCode = body.recoveryCode?.trim() ?? "";
+  if (!calendar) return json({ error: "Der Kalender muss zuerst von Pia oder Paul eingerichtet werden." }, 409);
+  if (calendar.recovery_code_hash) return json({ error: "Ein Rettungscode ist bereits eingerichtet." }, 409);
+  if (recoveryCode.length < 10 || recoveryCode.length > 80) return json({ error: "Der Rettungscode muss zwischen 10 und 80 Zeichen lang sein." }, 400);
+  await env.DB.prepare("UPDATE calendar SET recovery_code_hash = ? WHERE id = 1 AND recovery_code_hash IS NULL").bind(await sha256(recoveryCode)).run();
+  return json({ configured: true });
 }
 
 async function recoverAccess(request: Request, env: Env): Promise<Response> {
