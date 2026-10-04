@@ -81,15 +81,27 @@ function token() { return localStorage.getItem(TOKEN_STORAGE_KEY) || ""; }
 function configureMessage() { return `<main class="welcome-shell"><section class="welcome-card"><div class="heart-mark">♥</div><p class="eyebrow">Fast geschafft</p><h1>Die Verbindung fehlt noch.</h1><p class="intro">Trage zuerst die Adresse eures Cloudflare-Workers in <code>config.js</code> ein.</p></section></main>`; }
 function kindLabel(kind) { return ({ text: "Text", choice: "Auswahl", image: "Foto", audio: "Sprachnachricht", drawing: "Zeichnung", map: "Ort", link: "Link" })[kind] || "Antwort"; }
 function mediaKey(answer) { return answer?.payload?.mediaKey || ""; }
-const mountainRanges = [
-  '<path class="mountain-ice" d="M0 82 22 54 38 69 58 30 83 72 103 47 120 65V100H0Z"/><path class="mountain-mid" d="M0 91 29 61 45 78 67 46 96 82 120 60V100H0Z"/><path class="mountain-front" d="M0 100V84l21-17 20 20 23-30 29 30 27-15v28Z"/>',
-  '<path class="mountain-ice" d="M0 74 18 58 34 66 54 27 74 56 92 41 120 70V100H0Z"/><path class="mountain-mid" d="M0 95 27 53 48 81 69 43 88 74 104 55 120 70V100H0Z"/><path class="mountain-front" d="M0 100V82l18-13 18 14 24-25 25 29 20-18 15 9v22Z"/>',
-  '<path class="mountain-ice" d="M0 68 17 45 34 66 50 52 73 20 94 63 108 48 120 59V100H0Z"/><path class="mountain-mid" d="M0 100V78l25-25 17 22 25-33 25 35 18-16 10 12v27Z"/><path class="mountain-front" d="M0 100V88l16-9 18 10 23-22 16 20 22-19 25 19v13Z"/>',
-  '<path class="mountain-ice" d="M0 83 28 40 48 67 70 34 91 68 109 43 120 58V100H0Z"/><path class="mountain-mid" d="M0 100V77l23-18 20 27 28-39 18 28 15-17 16 19v23Z"/><path class="mountain-front" d="M0 100V89l24-17 16 16 24-18 20 22 21-12 15 10v10Z"/>',
-  '<path class="mountain-ice" d="M0 63 20 50 40 65 60 25 80 55 98 31 120 62V100H0Z"/><path class="mountain-mid" d="M0 100V79l18-15 21 18 25-40 22 38 18-22 16 15v27Z"/><path class="mountain-front" d="M0 100V86l18-12 18 14 27-24 18 22 20-12 19 14v12Z"/>',
-  '<path class="mountain-ice" d="M0 77 17 57 34 68 55 38 71 52 92 24 120 68V100H0Z"/><path class="mountain-mid" d="M0 100V84l27-31 18 29 21-21 21 27 15-24 18 17v19Z"/><path class="mountain-front" d="M0 100V90l20-14 17 15 23-20 22 19 18-17 20 16v11Z"/>',
-];
-function mountain(day) { return `<svg class="mountain-range mountain-${day % mountainRanges.length}" viewBox="0 0 120 100" preserveAspectRatio="none" aria-hidden="true">${mountainRanges[day % mountainRanges.length]}</svg>`; }
+function seededValue(seed) { return Math.abs(Math.sin(seed * 127.1 + 311.7) * 43758.5453) % 1; }
+function fourierRidge(day, baseline, height, frequencyShift, className) {
+  const points = [];
+  for (let index = 0; index <= 72; index += 1) {
+    const x = index / 72;
+    const envelope = Math.pow(Math.sin(Math.PI * x), .46);
+    let harmonic = 0;
+    for (let order = 1; order <= 7; order += 1) {
+      const phase = seededValue(day * 19 + order * 7 + frequencyShift) * Math.PI * 2;
+      const frequency = order * (1.05 + frequencyShift * .08);
+      harmonic += Math.sin(x * Math.PI * 2 * frequency + phase) * (1 / Math.pow(order, 1.18));
+    }
+    const mainPeak = Math.exp(-Math.pow((x - (.42 + seededValue(day + frequencyShift) * .22)) / .19, 2));
+    const y = baseline - envelope * (height * (.38 + mainPeak * .72) + harmonic * height * .18);
+    points.push(`${(x * 120).toFixed(2)},${Math.max(8, Math.min(96, y)).toFixed(2)}`);
+  }
+  return `<path class="${className}" d="M0,100 L${points.join(" L")} L120,100 Z"/><path class="${className}-contour" d="M${points.join(" L")}"/>`;
+}
+function mountain(day) {
+  return `<svg class="mountain-range" viewBox="0 0 120 100" preserveAspectRatio="none" aria-hidden="true">${fourierRidge(day, 83, 28, 1, "mountain-far")}${fourierRidge(day + 11, 93, 38, 2, "mountain-mid")}${fourierRidge(day + 23, 101, 48, 3, "mountain-front")}</svg>`;
+}
 
 async function api(path, options = {}) {
   const headers = new Headers(options.headers || {});
