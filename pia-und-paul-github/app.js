@@ -82,25 +82,42 @@ function configureMessage() { return `<main class="welcome-shell"><section class
 function kindLabel(kind) { return ({ text: "Text", choice: "Auswahl", image: "Foto", audio: "Sprachnachricht", drawing: "Zeichnung", map: "Ort", link: "Link" })[kind] || "Antwort"; }
 function mediaKey(answer) { return answer?.payload?.mediaKey || ""; }
 function seededValue(seed) { return Math.abs(Math.sin(seed * 127.1 + 311.7) * 43758.5453) % 1; }
-function fourierRidge(day, baseline, height, frequencyShift, className) {
+function triangularFourier(value, modes = 9) {
+  // Odd sine modes approximate a triangular wave: broad faces, but crisp summits.
+  let result = 0;
+  for (let mode = 1; mode <= modes; mode += 2) {
+    result += Math.sin(Math.PI * 2 * mode * value) * (mode % 4 === 1 ? 1 : -1) / (mode * mode);
+  }
+  return Math.max(0, Math.min(1, .5 + result * 4 / (Math.PI * Math.PI)));
+}
+function alpineRidge(day, baseline, height, layer, className) {
   const points = [];
-  for (let index = 0; index <= 72; index += 1) {
-    const x = index / 72;
-    const envelope = Math.pow(Math.sin(Math.PI * x), .46);
-    let harmonic = 0;
-    for (let order = 1; order <= 7; order += 1) {
-      const phase = seededValue(day * 19 + order * 7 + frequencyShift) * Math.PI * 2;
-      const frequency = order * (1.05 + frequencyShift * .08);
-      harmonic += Math.sin(x * Math.PI * 2 * frequency + phase) * (1 / Math.pow(order, 1.18));
-    }
-    const mainPeak = Math.exp(-Math.pow((x - (.42 + seededValue(day + frequencyShift) * .22)) / .19, 2));
-    const y = baseline - envelope * (height * (.38 + mainPeak * .72) + harmonic * height * .18);
-    points.push(`${(x * 120).toFixed(2)},${Math.max(8, Math.min(96, y)).toFixed(2)}`);
+  const modes = [
+    [.58 + layer * .04, .42, 3.1],
+    [1.18 + layer * .08, .54, 5.4],
+    [2.16 + layer * .13, .36, 8.4],
+    [4.25 + layer * .19, .22, 11.5],
+    [8.3 + layer * .25, .12, 16.5]
+  ];
+  for (let index = 0; index <= 144; index += 1) {
+    const x = index / 144;
+    // Multiple low and high frequency Fourier modes; no edge envelope so the ridge
+    // continues naturally beyond both sides of the door instead of falling away.
+    let ridge = .16;
+    modes.forEach(([frequency, amplitude, sharpness], mode) => {
+      const phase = seededValue(day * 31 + layer * 17 + mode * 11);
+      const wave = triangularFourier(x * frequency + phase);
+      ridge += amplitude * Math.pow(wave, sharpness);
+    });
+    const rockCut = .055 * Math.sin(Math.PI * 2 * (x * (12 + layer) + seededValue(day + 91)))
+      + .025 * Math.sin(Math.PI * 2 * (x * (29 + layer * 3) + seededValue(day + 103)));
+    const y = baseline - height * (ridge + rockCut);
+    points.push(`${(x * 120).toFixed(2)},${Math.max(4, Math.min(96, y)).toFixed(2)}`);
   }
   return `<path class="${className}" d="M0,100 L${points.join(" L")} L120,100 Z"/><path class="${className}-contour" d="M${points.join(" L")}"/>`;
 }
 function mountain(day) {
-  return `<svg class="mountain-range" viewBox="0 0 120 100" preserveAspectRatio="none" aria-hidden="true">${fourierRidge(day, 83, 28, 1, "mountain-far")}${fourierRidge(day + 11, 93, 38, 2, "mountain-mid")}${fourierRidge(day + 23, 101, 48, 3, "mountain-front")}</svg>`;
+  return `<svg class="mountain-range" viewBox="0 0 120 100" preserveAspectRatio="none" aria-hidden="true">${alpineRidge(day, 78, 26, 1, "mountain-far")}${alpineRidge(day + 11, 88, 34, 2, "mountain-mid")}${alpineRidge(day + 23, 99, 43, 3, "mountain-front")}</svg>`;
 }
 
 async function api(path, options = {}) {
