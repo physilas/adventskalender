@@ -81,6 +81,15 @@ function token() { return localStorage.getItem(TOKEN_STORAGE_KEY) || ""; }
 function configureMessage() { return `<main class="welcome-shell"><section class="welcome-card"><div class="heart-mark">♥</div><p class="eyebrow">Fast geschafft</p><h1>Die Verbindung fehlt noch.</h1><p class="intro">Trage zuerst die Adresse eures Cloudflare-Workers in <code>config.js</code> ein.</p></section></main>`; }
 function kindLabel(kind) { return ({ text: "Text", choice: "Auswahl", image: "Foto", audio: "Sprachnachricht", drawing: "Zeichnung", map: "Ort", link: "Link" })[kind] || "Antwort"; }
 function mediaKey(answer) { return answer?.payload?.mediaKey || ""; }
+const mountainRanges = [
+  '<path class="mountain-ice" d="M0 82 22 54 38 69 58 30 83 72 103 47 120 65V100H0Z"/><path class="mountain-mid" d="M0 91 29 61 45 78 67 46 96 82 120 60V100H0Z"/><path class="mountain-front" d="M0 100V84l21-17 20 20 23-30 29 30 27-15v28Z"/>',
+  '<path class="mountain-ice" d="M0 74 18 58 34 66 54 27 74 56 92 41 120 70V100H0Z"/><path class="mountain-mid" d="M0 95 27 53 48 81 69 43 88 74 104 55 120 70V100H0Z"/><path class="mountain-front" d="M0 100V82l18-13 18 14 24-25 25 29 20-18 15 9v22Z"/>',
+  '<path class="mountain-ice" d="M0 68 17 45 34 66 50 52 73 20 94 63 108 48 120 59V100H0Z"/><path class="mountain-mid" d="M0 100V78l25-25 17 22 25-33 25 35 18-16 10 12v27Z"/><path class="mountain-front" d="M0 100V88l16-9 18 10 23-22 16 20 22-19 25 19v13Z"/>',
+  '<path class="mountain-ice" d="M0 83 28 40 48 67 70 34 91 68 109 43 120 58V100H0Z"/><path class="mountain-mid" d="M0 100V77l23-18 20 27 28-39 18 28 15-17 16 19v23Z"/><path class="mountain-front" d="M0 100V89l24-17 16 16 24-18 20 22 21-12 15 10v10Z"/>',
+  '<path class="mountain-ice" d="M0 63 20 50 40 65 60 25 80 55 98 31 120 62V100H0Z"/><path class="mountain-mid" d="M0 100V79l18-15 21 18 25-40 22 38 18-22 16 15v27Z"/><path class="mountain-front" d="M0 100V86l18-12 18 14 27-24 18 22 20-12 19 14v12Z"/>',
+  '<path class="mountain-ice" d="M0 77 17 57 34 68 55 38 71 52 92 24 120 68V100H0Z"/><path class="mountain-mid" d="M0 100V84l27-31 18 29 21-21 21 27 15-24 18 17v19Z"/><path class="mountain-front" d="M0 100V90l20-14 17 15 23-20 22 19 18-17 20 16v11Z"/>',
+];
+function mountain(day) { return `<svg class="mountain-range mountain-${day % mountainRanges.length}" viewBox="0 0 120 100" preserveAspectRatio="none" aria-hidden="true">${mountainRanges[day % mountainRanges.length]}</svg>`; }
 
 async function api(path, options = {}) {
   const headers = new Headers(options.headers || {});
@@ -160,7 +169,7 @@ function renderCalendar() {
     const seen = seenDays.includes(day);
     const stateClass = !unlocked ? "locked" : answer ? (seen ? "seen" : "new") : "missing";
     const symbol = !unlocked ? "⌘" : answer ? (seen ? "✓" : "♥") : "⌛";
-    return `<button class="door calendar-door ${stateClass} ${selectedCalendarDay === day ? "active" : ""}" data-calendar-day="${day}" ${unlocked ? "" : "disabled"}><span>${day}</span><b aria-hidden="true">${symbol}</b></button>`;
+    return `<button class="door calendar-door ${stateClass} ${selectedCalendarDay === day ? "active" : ""}" data-calendar-day="${day}" ${unlocked ? "" : "disabled"}>${mountain(day)}<span>${day}</span><b aria-hidden="true">${symbol}</b></button>`;
   }).join("");
   const unlocked = selectedCalendarDay <= revealed;
   const partner = other(session.partner);
@@ -201,7 +210,7 @@ function renderWorkshop(message = "") {
     const answer = ownAnswers[day];
     const stateClass = answer ? "complete" : day < today ? "overdue" : day === today ? "today" : "upcoming";
     const marker = answer ? "✓" : day < today ? "⌛" : day === today ? "•" : "";
-    return `<button class="door workshop-door ${stateClass} ${selectedWorkshopDay === day ? "active" : ""}" data-workshop-day="${day}"><span>${day}</span><b aria-hidden="true">${marker}</b></button>`;
+    return `<button class="door workshop-door ${stateClass} ${selectedWorkshopDay === day ? "active" : ""}" data-workshop-day="${day}">${mountain(day)}<span>${day}</span><b aria-hidden="true">${marker}</b></button>`;
   }).join("");
   const prompt = prompts[session.partner][selectedWorkshopDay - 1];
   const answer = ownAnswers[selectedWorkshopDay];
