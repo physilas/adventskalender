@@ -282,7 +282,9 @@ function bindCalendar() {
     selectedCalendarDay = Number(button.dataset.calendarDay);
     calendarDetailOpen = true;
     const unlocked = selectedCalendarDay <= (state.status.revealThrough || 0);
-    if (unlocked && !state.seenDays.includes(selectedCalendarDay)) {
+    const partner = other(state.session.partner);
+    const hasVisibleSurprise = Boolean(state.partnerAnswers[selectedCalendarDay]) || prompts[partner][selectedCalendarDay - 1].kind === "gift";
+    if (unlocked && hasVisibleSurprise && !state.seenDays.includes(selectedCalendarDay)) {
       state.seenDays.push(selectedCalendarDay);
       api("/api/doors/open", { method: "POST", body: JSON.stringify({ day: selectedCalendarDay }) }).catch(() => state.seenDays = state.seenDays.filter((day) => day !== selectedCalendarDay));
     }
