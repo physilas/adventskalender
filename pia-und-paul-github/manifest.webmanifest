@@ -1,0 +1,20 @@
+{
+  "name": "Pia & Paul · Adventskalender",
+  "short_name": "Pia & Paul",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#061523",
+  "theme_color": "#245b7c",
+  "icons": [
+    {
+      "src": "icon-pia-paul-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-pia-paul-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

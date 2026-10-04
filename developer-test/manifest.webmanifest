@@ -1,0 +1,20 @@
+{
+  "name": "Pia & Paul · Adventskalender Test",
+  "short_name": "Pia & Paul Test",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#061523",
+  "theme_color": "#245b7c",
+  "icons": [
+    {
+      "src": "../pia-und-paul-github/icon-pia-paul-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "../pia-und-paul-github/icon-pia-paul-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
