@@ -13,6 +13,16 @@ body,
   background-color: #061523;
 }
 
+.welcome-shell {
+  background-image:
+    linear-gradient(180deg, #03102173 0%, #061523b8 100%),
+    url("https://images.unsplash.com/photo-1593959734793-6e92d102da1e?auto=format&fit=crop&w=2400&q=85");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-attachment: fixed;
+}
+
 .welcome-card {
   color: #16384f;
   border-color: #d4e2e8;
@@ -377,7 +387,12 @@ body,
   place-items: center;
   padding: 1rem;
   overflow: auto;
-  background: #010c17c7;
+  background-image:
+    linear-gradient(180deg, #010c17c9 0%, #031522db 100%),
+    url("https://images.unsplash.com/photo-1593959734793-6e92d102da1e?auto=format&fit=crop&w=2400&q=85");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
 }
 .guide-card {
   position: relative;
