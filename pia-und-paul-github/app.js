@@ -99,6 +99,7 @@ function lockedQuip(day, partner, year) {
     "So viel Vorfreude steht dir ausgezeichnet.",
     "Frecher Versuch. Der Kalender bleibt leider unbestechlich.",
     "Offenbar sind die Zahlen auf den Türchen für dich eher grobe Empfehlungen.",
+    "Hier könnte Ihre Weihnachtswerbung stehen.",
   ];
   const position = shuffledDoorDays(partner, year).indexOf(day);
   const row = Math.floor(position / 4);
