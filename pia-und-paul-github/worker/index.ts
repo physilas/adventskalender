@@ -5,7 +5,7 @@ export interface Env {
 
 type Partner = "pia" | "paul";
 type AnswerKind = "text" | "choice" | "choice-custom" | "ranking" | "image" | "audio" | "drawing" | "drawing-riddle" | "map" | "link";
-type Calendar = { id: number; access_code_hash: string; recovery_code_hash?: string | null; season_year: number; test_day?: number };
+type Calendar = { id: number; access_code_hash: string; recovery_code_hash?: string | null; setup_complete?: number; season_year: number; test_day?: number };
 type Session = { partner: Partner };
 type AnswerRow = { day: number; content: string; kind?: string; payload?: string | null; updated_at: string };
 
@@ -45,6 +45,7 @@ async function route(request: Request, env: Env, url: URL): Promise<Response> {
 async function readCalendar(request: Request, env: Env): Promise<Response> {
   const calendar = await getCalendar(env);
   if (!calendar) return json({ configured: false });
+  if (!isCalendarConfigured(calendar)) return json({ configured: false, recoveryConfigured: Boolean(calendar.recovery_code_hash) });
   const session = await getSession(request, env);
   if (!session) return json({ configured: true, session: null, seasonYear: calendar.season_year, recoveryConfigured: Boolean(calendar.recovery_code_hash) });
 
@@ -91,12 +92,19 @@ async function setup(request: Request, env: Env): Promise<Response> {
   const body = await request.json() as { partner?: Partner; accessCode?: string };
   const code = body.accessCode?.trim() ?? "";
   if (!isPartner(body.partner) || code.length < 6 || code.length > 80) return json({ error: "Wähle dich aus und verwende einen Schlüssel mit mindestens 6 Zeichen." }, 400);
-  if (await getCalendar(env)) return json({ error: "Der Kalender wurde bereits eingerichtet." }, 409);
+  const calendar = await getCalendar(env);
+  if (calendar && isCalendarConfigured(calendar)) return json({ error: "Der Kalender wurde bereits eingerichtet." }, 409);
   try {
-    const statement = isTestEnvironment(env)
-      ? env.DB.prepare("INSERT INTO calendar (id, access_code_hash, season_year, test_day) VALUES (1, ?, ?, 1)").bind(await sha256(code), currentYear())
-      : env.DB.prepare("INSERT INTO calendar (id, access_code_hash, season_year) VALUES (1, ?, ?)").bind(await sha256(code), currentYear());
-    await statement.run();
+    const accessCodeHash = await sha256(code);
+    const statement = calendar
+      ? isTestEnvironment(env)
+        ? env.DB.prepare("UPDATE calendar SET access_code_hash = ?, season_year = ?, test_day = 1, setup_complete = 1 WHERE id = 1 AND setup_complete = 0").bind(accessCodeHash, currentYear())
+        : env.DB.prepare("UPDATE calendar SET access_code_hash = ?, season_year = ?, setup_complete = 1 WHERE id = 1 AND setup_complete = 0").bind(accessCodeHash, currentYear())
+      : isTestEnvironment(env)
+        ? env.DB.prepare("INSERT INTO calendar (id, access_code_hash, season_year, test_day, setup_complete) VALUES (1, ?, ?, 1, 1)").bind(accessCodeHash, currentYear())
+        : env.DB.prepare("INSERT INTO calendar (id, access_code_hash, season_year, setup_complete) VALUES (1, ?, ?, 1)").bind(accessCodeHash, currentYear());
+    const result = await statement.run();
+    if (!result.meta.changes) return json({ error: "Der Kalender wurde bereits eingerichtet." }, 409);
   } catch {
     return json({ error: "Der Kalender wurde bereits eingerichtet." }, 409);
   }
@@ -107,10 +115,18 @@ async function configureRecovery(request: Request, env: Env): Promise<Response> 
   const body = await request.json() as { recoveryCode?: string };
   const calendar = await getCalendar(env);
   const recoveryCode = body.recoveryCode?.trim() ?? "";
-  if (!calendar) return json({ error: "Der Kalender muss zuerst von Pia oder Paul eingerichtet werden." }, 409);
-  if (calendar.recovery_code_hash) return json({ error: "Ein Rettungscode ist bereits eingerichtet." }, 409);
+  if (calendar?.recovery_code_hash) return json({ error: "Ein Rettungscode ist bereits eingerichtet." }, 409);
   if (recoveryCode.length < 10 || recoveryCode.length > 80) return json({ error: "Der Rettungscode muss zwischen 10 und 80 Zeichen lang sein." }, 400);
-  await env.DB.prepare("UPDATE calendar SET recovery_code_hash = ? WHERE id = 1 AND recovery_code_hash IS NULL").bind(await sha256(recoveryCode)).run();
+  const recoveryCodeHash = await sha256(recoveryCode);
+  if (!calendar) {
+    const placeholderAccessCode = await sha256(crypto.randomUUID());
+    const statement = isTestEnvironment(env)
+      ? env.DB.prepare("INSERT INTO calendar (id, access_code_hash, recovery_code_hash, season_year, test_day, setup_complete) VALUES (1, ?, ?, ?, 1, 0)").bind(placeholderAccessCode, recoveryCodeHash, currentYear())
+      : env.DB.prepare("INSERT INTO calendar (id, access_code_hash, recovery_code_hash, season_year, setup_complete) VALUES (1, ?, ?, ?, 0)").bind(placeholderAccessCode, recoveryCodeHash, currentYear());
+    await statement.run();
+  } else {
+    await env.DB.prepare("UPDATE calendar SET recovery_code_hash = ? WHERE id = 1 AND recovery_code_hash IS NULL").bind(recoveryCodeHash).run();
+  }
   return json({ configured: true });
 }
 
@@ -119,7 +135,7 @@ async function recoverAccess(request: Request, env: Env): Promise<Response> {
   const calendar = await getCalendar(env);
   const recoveryCode = body.recoveryCode?.trim() ?? "";
   const accessCode = body.accessCode?.trim() ?? "";
-  if (!calendar) return json({ error: "Der Kalender wird noch eingerichtet." }, 409);
+  if (!calendar || !isCalendarConfigured(calendar)) return json({ error: "Der Kalender wird noch eingerichtet." }, 409);
   if (accessCode.length < 6 || accessCode.length > 80) return json({ error: "Der neue gemeinsame Schlüssel muss zwischen 6 und 80 Zeichen lang sein." }, 400);
   if (!calendar.recovery_code_hash || await sha256(recoveryCode) !== calendar.recovery_code_hash) return json({ error: "Der Rettungscode stimmt nicht." }, 401);
   await Promise.all([
@@ -132,7 +148,7 @@ async function recoverAccess(request: Request, env: Env): Promise<Response> {
 async function signIn(request: Request, env: Env): Promise<Response> {
   const body = await request.json() as { partner?: Partner; accessCode?: string };
   const calendar = await getCalendar(env);
-  if (!calendar) return json({ error: "Der Kalender wird noch eingerichtet." }, 409);
+  if (!calendar || !isCalendarConfigured(calendar)) return json({ error: "Der Kalender wird noch eingerichtet." }, 409);
   if (!isPartner(body.partner) || !body.accessCode) return json({ error: "Bitte wähle deinen Namen und gib den gemeinsamen Schlüssel ein." }, 400);
   if (await sha256(body.accessCode.trim()) !== calendar.access_code_hash) return json({ error: "Der gemeinsame Schlüssel stimmt nicht." }, 401);
   return json(await issueSession(body.partner, env));
@@ -221,8 +237,12 @@ async function setTestDay(request: Request, env: Env): Promise<Response> {
 }
 
 async function getCalendar(env: Env) {
-  const columns = isTestEnvironment(env) ? "id, access_code_hash, recovery_code_hash, season_year, test_day" : "id, access_code_hash, recovery_code_hash, season_year";
+  const columns = isTestEnvironment(env) ? "id, access_code_hash, recovery_code_hash, setup_complete, season_year, test_day" : "id, access_code_hash, recovery_code_hash, setup_complete, season_year";
   return env.DB.prepare(`SELECT ${columns} FROM calendar WHERE id = 1`).first<Calendar>();
+}
+
+function isCalendarConfigured(calendar: Calendar) {
+  return calendar.setup_complete !== 0;
 }
 
 async function getSession(request: Request, env: Env): Promise<Session | null> {

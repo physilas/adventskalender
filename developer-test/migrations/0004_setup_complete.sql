@@ -1,0 +1,1 @@
+ALTER TABLE calendar ADD COLUMN setup_complete INTEGER NOT NULL DEFAULT 1;
