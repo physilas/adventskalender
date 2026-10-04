@@ -1,0 +1,82 @@
+.calendar-layout--calendar {
+  width: min(100%, 48rem);
+  margin: 0 auto;
+}
+
+.calendar-layout--calendar .door-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(6, minmax(0, 1fr));
+}
+
+.calendar-modal {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: clamp(1rem, 4vw, 2rem);
+  background: #12334eb8;
+  backdrop-filter: blur(5px);
+}
+
+.calendar-modal .door-detail {
+  position: relative;
+  width: min(100%, 42rem);
+  min-height: 0;
+  max-height: min(46rem, calc(100svh - 2rem));
+  overflow: auto;
+}
+
+.modal-close {
+  position: absolute;
+  z-index: 2;
+  top: .85rem;
+  right: .9rem;
+  display: grid;
+  width: 2.35rem;
+  height: 2.35rem;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  color: #123b5d;
+  background: #e5f4f9;
+  font-family: Arial, sans-serif;
+  font-size: 1.7rem;
+  line-height: 1;
+}
+
+.received-map {
+  height: min(52vw, 17rem);
+  min-height: 12rem;
+  margin: .8rem 0;
+  overflow: hidden;
+  border: 1px solid #b9dce9;
+  border-radius: .75rem;
+  background: #e8f4f8;
+}
+
+@media (max-width: 700px) {
+  .app-shell.calendar-shell {
+    display: flex;
+    min-height: 100svh;
+    height: 100svh;
+    padding: 0 .85rem .8rem;
+    overflow: hidden;
+    flex-direction: column;
+  }
+
+  .calendar-shell .topbar { flex: 0 0 auto; padding: .75rem 0 .45rem; }
+  .calendar-shell .hero-row { display: none; }
+  .calendar-shell .view-switch { flex: 0 0 auto; margin: 0 auto .55rem; }
+  .calendar-shell .view-switch button { padding: .58rem .5rem; }
+  .calendar-shell .calendar-layout--calendar { display: block; flex: 1 1 auto; width: 100%; min-height: 0; }
+  .calendar-shell .calendar-layout--calendar .door-grid { height: 100%; gap: .45rem; }
+  .calendar-shell .calendar-layout--calendar .door { min-height: 0; aspect-ratio: auto; }
+  .calendar-shell .calendar-legend { display: none; }
+  .calendar-shell .developer-panel { flex: 0 0 auto; margin: 0 0 .6rem; padding: .65rem .8rem; }
+  .calendar-shell .developer-panel>p:last-child { display: none; }
+  .calendar-modal { padding: .75rem; }
+  .calendar-modal .door-detail { max-height: calc(100svh - 1.5rem); padding: 1.25rem; }
+  .calendar-modal .detail-top { padding-right: 2.7rem; margin-bottom: 1.5rem; }
+  .received-map { height: min(62vw, 19rem); }
+}

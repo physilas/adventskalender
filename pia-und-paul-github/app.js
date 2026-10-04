@@ -63,6 +63,7 @@ let state = null;
 let selectedCalendarDay = 1;
 let selectedWorkshopDay = 1;
 let activeView = "calendar";
+let calendarDetailOpen = false;
 let selectedPartner = "pia";
 let mapPicker = null;
 let mapLocation = null;
@@ -161,9 +162,9 @@ function renderApp(message = "") {
   const { session, status, seasonYear } = state;
   const heading = status.phase === "before" ? `Bereit für den 1. Dezember ${seasonYear}` : status.phase === "complete" ? "Alle Türchen sind offen" : `Dezember ${seasonYear}`;
   const developerControls = TEST_MODE ? renderDeveloperControls(status) : "";
-  app.innerHTML = `<main class="app-shell"><header class="topbar"><div class="brand"><span class="mini-heart">♥</span><span>Pia <i>&</i> Paul</span></div><button class="quiet-button" id="signout">Abmelden</button></header><section class="hero-row"><div><p class="eyebrow">Adventskalender</p><h1>${heading}</h1></div><p class="hero-note">${activeView === "calendar" ? `Für dich: die kleinen Überraschungen von ${name(other(session.partner))}.` : `Deine Werkstatt: Bereite alle 24 Überraschungen für ${name(other(session.partner))} vor.`}</p></section><nav class="view-switch" aria-label="Bereich wählen"><button data-view="calendar" class="${activeView === "calendar" ? "selected" : ""}">♥ Dein Kalender</button><button data-view="workshop" class="${activeView === "workshop" ? "selected" : ""}">✦ Deine Werkstatt</button></nav>${developerControls}${activeView === "calendar" ? renderCalendar() : renderWorkshop(message)}</main>`;
+  app.innerHTML = `<main class="app-shell ${activeView === "calendar" ? "calendar-shell" : ""}"><header class="topbar"><div class="brand"><span class="mini-heart">♥</span><span>Pia <i>&</i> Paul</span></div><button class="quiet-button" id="signout">Abmelden</button></header><section class="hero-row"><div><p class="eyebrow">Adventskalender</p><h1>${heading}</h1></div><p class="hero-note">${activeView === "calendar" ? `Für dich: die kleinen Überraschungen von ${name(other(session.partner))}.` : `Deine Werkstatt: Bereite alle 24 Überraschungen für ${name(other(session.partner))} vor.`}</p></section><nav class="view-switch" aria-label="Bereich wählen"><button data-view="calendar" class="${activeView === "calendar" ? "selected" : ""}">♥ Dein Kalender</button><button data-view="workshop" class="${activeView === "workshop" ? "selected" : ""}">✦ Deine Werkstatt</button></nav>${developerControls}${activeView === "calendar" ? renderCalendar() : renderWorkshop(message)}</main>`;
   document.querySelector("#signout").addEventListener("click", () => { localStorage.removeItem(TOKEN_STORAGE_KEY); state.session = null; render(); });
-  document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => { activeView = button.dataset.view; renderApp(); }));
+  document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => { activeView = button.dataset.view; calendarDetailOpen = false; renderApp(); }));
   bindDeveloperControls();
   if (activeView === "calendar") bindCalendar(); else bindWorkshop();
 }
@@ -198,7 +199,8 @@ function renderCalendar() {
   const prompt = prompts[partner][selectedCalendarDay - 1];
   const answer = partnerAnswers[selectedCalendarDay];
   const detail = !unlocked ? `<div class="locked-copy"><h2>Noch ein wenig Geduld.</h2><p>Dieses Türchen öffnet sich an seinem Dezembertag.</p></div>` : `<p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${answer ? renderAnswer(answer) : `<section class="waiting-copy"><span>⌛</span><p>${name(partner)} hat dieses Türchen noch nicht gefüllt. Vielleicht kommt die Überraschung etwas später.</p></section>`}`;
-  return `<section class="calendar-layout"><nav class="door-grid" aria-label="Deine Adventstürchen">${doors}</nav><article class="door-detail"><div class="detail-top"><p class="eyebrow">${unlocked ? `Türchen ${selectedCalendarDay}` : "Bis bald"}</p><span class="status-pill">${unlocked ? "♥ für dich" : "⌘ verschlossen"}</span></div>${detail}</article></section><p class="legend"><span class="legend-new">♥</span> neue Überraschung <span class="legend-seen">✓</span> schon angesehen <span class="legend-missing">⌛</span> noch offen</p>`;
+  const modal = calendarDetailOpen ? `<section class="calendar-modal" role="dialog" aria-modal="true" aria-labelledby="door-title"><article class="door-detail"><button class="modal-close" type="button" aria-label="Türchen schließen">×</button><div class="detail-top"><p class="eyebrow">${unlocked ? `Türchen ${selectedCalendarDay}` : "Bis bald"}</p><span class="status-pill">${unlocked ? "♥ für dich" : "⌘ verschlossen"}</span></div><div id="door-title">${detail}</div></article></section>` : "";
+  return `<section class="calendar-layout calendar-layout--calendar"><nav class="door-grid" aria-label="Deine Adventstürchen">${doors}</nav></section>${modal}<p class="legend calendar-legend"><span class="legend-new">♥</span> neue Überraschung <span class="legend-seen">✓</span> schon angesehen <span class="legend-missing">⌛</span> noch offen</p>`;
 }
 
 function renderAnswer(answer) {
@@ -207,7 +209,7 @@ function renderAnswer(answer) {
   if (answer.kind === "map") {
     const { lat, lng, label = "Dieser Ort" } = answer.payload || {};
     const url = `https://www.openstreetmap.org/?mlat=${encodeURIComponent(lat)}&mlon=${encodeURIComponent(lng)}#map=15/${encodeURIComponent(lat)}/${encodeURIComponent(lng)}`;
-    return `<section class="received-note"><p class="note-label">Ein Ort für euch</p><p>${escape(label)}</p><a class="map-link" href="${url}" target="_blank" rel="noopener">Ort auf OpenStreetMap ansehen ↗</a></section>`;
+    return `<section class="received-note"><p class="note-label">Ein Ort für euch</p><p>${escape(label)}</p><div class="received-map" data-received-map data-lat="${escape(lat)}" data-lng="${escape(lng)}" data-label="${escape(label)}">Karte wird geladen …</div><a class="map-link" href="${url}" target="_blank" rel="noopener">In OpenStreetMap öffnen ↗</a></section>`;
   }
   if (answer.kind === "link") return `<section class="received-note"><p class="note-label">Ein Link für dich</p><a class="shared-link" href="${escape(answer.content)}" target="_blank" rel="noopener">${escape(answer.content)} ↗</a></section>`;
   return `<section class="received-note"><p class="note-label">${answer.kind === "choice" ? "Die Wahl von " + name(other(state.session.partner)) : "Eine Nachricht für dich"}</p><p>${escape(answer.content)}</p></section>`;
@@ -216,13 +218,16 @@ function renderAnswer(answer) {
 function bindCalendar() {
   document.querySelectorAll("[data-calendar-day]").forEach((button) => button.addEventListener("click", async () => {
     selectedCalendarDay = Number(button.dataset.calendarDay);
+    calendarDetailOpen = true;
     if (!state.seenDays.includes(selectedCalendarDay)) {
       state.seenDays.push(selectedCalendarDay);
       api("/api/doors/open", { method: "POST", body: JSON.stringify({ day: selectedCalendarDay }) }).catch(() => state.seenDays = state.seenDays.filter((day) => day !== selectedCalendarDay));
     }
     renderApp();
   }));
+  document.querySelector(".modal-close")?.addEventListener("click", () => { calendarDetailOpen = false; renderApp(); });
   hydrateMedia();
+  setupReceivedMaps();
 }
 
 function renderWorkshop(message = "") {
@@ -538,6 +543,19 @@ function setupMap(savedLocation) {
     mapPicker.setView(latlng, 15);
     setMarker(latlng);
   }, () => coordinateCopy.textContent = "Der Standort konnte nicht abgerufen werden. Wähle den Punkt einfach auf der Karte."));
+}
+
+function setupReceivedMaps() {
+  document.querySelectorAll("[data-received-map]").forEach((element) => {
+    const lat = Number(element.dataset.lat);
+    const lng = Number(element.dataset.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) { element.textContent = "Dieser Ort hat keine gültigen Koordinaten."; return; }
+    if (!window.L) { element.textContent = "Die Kartenansicht konnte nicht geladen werden."; return; }
+    const map = window.L.map(element, { zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, touchZoom: false, keyboard: false }).setView([lat, lng], 14);
+    window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap-Mitwirkende" }).addTo(map);
+    window.L.marker([lat, lng], { keyboard: false }).addTo(map).bindTooltip(element.dataset.label || "Euer Ort", { permanent: false });
+    requestAnimationFrame(() => map.invalidateSize());
+  });
 }
 
 async function hydrateMedia() {
