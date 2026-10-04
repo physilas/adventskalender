@@ -97,7 +97,7 @@ function lockedQuip(day) {
     "Psst – dieses Türchen übt noch seinen großen Auftritt.",
     "Fast! Die Überraschung versteckt sich noch hinter dem Bergkamm.",
     "So viel Vorfreude steht dir ausgezeichnet.",
-    "Ein bisschen Geduld, du Herzensmensch – kein Advents-Express!",
+    "Frecher Versuch. Der Kalender bleibt leider unbestechlich.",
   ];
   return quips[(day - 1) % quips.length];
 }
