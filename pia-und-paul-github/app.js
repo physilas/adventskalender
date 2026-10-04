@@ -98,7 +98,7 @@ function lockedQuip(day, partner, year) {
     "Fast! Die Überraschung versteckt sich noch hinter dem Bergkamm.",
     "So viel Vorfreude steht dir ausgezeichnet.",
     "Frecher Versuch. Der Kalender bleibt leider unbestechlich.",
-    "Offenbar sind Adventstage für dich eher grobe Empfehlungen.",
+    "Offenbar sind die Zahlen auf den Türchen für dich eher grobe Empfehlungen.",
   ];
   const position = shuffledDoorDays(partner, year).indexOf(day);
   const row = Math.floor(position / 4);
