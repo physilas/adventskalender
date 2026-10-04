@@ -1,6 +1,6 @@
 # Pia & Paul · Adventskalender
 
-Eine kleine Adventskalender-Webapp für zwei Handys — ohne Nutzerkonto für Pia und Paul. Die Website liegt auf GitHub Pages; nur die Antworten und die tägliche Freischaltung laufen über einen kostenlosen Cloudflare Worker mit D1-Datenbank.
+Eine kleine Adventskalender-Webapp für zwei Handys — ohne Nutzerkonto für Pia und Paul. Die Website liegt auf GitHub Pages; Antworten, private Medien und die tägliche Freischaltung laufen über einen kostenlosen Cloudflare Worker mit D1-Datenbank.
 
 ## Einmalig einrichten
 
@@ -31,12 +31,20 @@ Eine kleine Adventskalender-Webapp für zwei Handys — ohne Nutzerkonto für Pi
 
 Nach dem ersten Push veröffentlicht GitHub die Web-App. Die erste Person richtet dort den Kalender und einen gemeinsamen Schlüssel ein; die zweite Person öffnet denselben Link, wählt ihren Namen und verwendet denselben Schlüssel.
 
+## Zwei Bereiche und Antwortformate
+
+- **Dein Kalender** zeigt die bis zum jeweiligen Datum freigeschalteten Überraschungen des Partners. Ein Herz markiert eine neue Überraschung, ein Haken ein bereits angesehenes Türchen und eine Sanduhr eine noch fehlende Antwort.
+- **Deine Werkstatt** ist immer vollständig geöffnet. Dort lassen sich alle 24 persönlichen Aufgaben vorbereiten oder nachträglich ergänzen. Ein Haken markiert gespeicherte Beiträge, eine Sanduhr vergangene, noch leere Tage.
+- Neben Text und Auswahlfragen gibt es Fotos, kurze Sprachaufnahmen, Zeichnungen, Ortsmarkierungen auf OpenStreetMap und beliebige Links (zum Beispiel Spotify oder YouTube).
+- Bilder, Zeichnungen und Sprachaufnahmen werden privat in D1 gespeichert. Wegen der kostenlosen D1-Grenze sind sie auf **1,8 MB** begrenzt; für Sprachaufnahmen eignet sich daher eine kurze Nachricht.
+
 ## Wie die Privatsphäre funktioniert
 
 - Der Schlüssel wird nur als kryptografischer Prüfwert gespeichert.
 - Jede Anmeldung erhält einen zufälligen, 45 Tage gültigen Zugangsschlüssel auf dem jeweiligen Handy.
-- Die Antwort des Partners wird vom Worker vor dem Folgetag nicht an den Browser übertragen.
+- Die Antwort des Partners wird vom Worker vor ihrem jeweiligen Kalendertag nicht an den Browser übertragen.
 - Ein gemeinsamer Schlüssel ist bewusst unkompliziert, aber kein Ersatz für zwei vollständig getrennte Benutzerkonten. Für Pia und Paul als vertrauensvolles Paar ist er die reibungsärmste Lösung.
+- Wer Zugriff auf den Cloudflare-Account bzw. die D1-Datenbank hat, kann die gespeicherten Daten technisch einsehen. Die Website selbst veröffentlicht keine Antworten.
 
 ## Lokal ansehen
 

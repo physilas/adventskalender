@@ -3,73 +3,376 @@ const TEST_MODE = window.ADVENT_DEVELOPER_TEST === true;
 const TOKEN_STORAGE_KEY = TEST_MODE ? "pia-paul-calendar-test-token" : "pia-paul-calendar-token";
 const app = document.querySelector("#app");
 const days = Array.from({ length: 24 }, (_, index) => index + 1);
+const question = (kind, prompt, options = [], hint = "") => ({ kind, prompt, options, hint });
 const prompts = {
-  pia: ["Woran merkst du, dass Paul dich wirklich kennt?","Welche kleine Eigenheit von Paul bringt dich immer zum Lächeln?","Wann hat Paul dich zuletzt überrascht – ganz ohne große Geste?","Was möchtest du mit Paul in eurem ersten Ehejahr unbedingt erleben?","Welchen gemeinsamen Moment würdest du gern noch einmal erleben?","Wofür bist du Paul heute besonders dankbar?","Was macht euren Alltag für dich heimelig?","Welche Stärke von Paul bewunderst du am meisten?","Welche Tradition möchtet ihr zwei unbedingt weiterführen oder erfinden?","Wie hilft dir Paul, du selbst zu sein?","Welche Erinnerung an euer Kennenlernen magst du besonders?","Welche Seite an Paul möchtest du noch besser kennenlernen?","Was wäre ein perfekter freier Sonntag zu zweit?","Wann fühlst du dich Paul besonders nah?","Welche Kleinigkeit wünschst du dir öfter von eurem gemeinsamen Alltag?","Was ist etwas, das Paul ganz selbstverständlich gut kann?","Welche gemeinsame Sache macht euch zu einem guten Team?","Welche drei Wörter beschreiben Paul als Partner für dich?","Was war in diesem Jahr ein stiller, schöner Glücksmoment mit Paul?","Welche Reise oder welches Abenteuer möchtet ihr zusammen planen?","Was möchtest du Paul für die Zukunft versprechen?","Worüber möchtest du mit Paul noch viel öfter lachen?","Welche liebevolle Nachricht würdest du Paul gern an einem schweren Tag geben?","Was wünschst du euch beiden für das nächste Weihnachtsfest?"],
-  paul: ["Woran merkst du, dass Pia dich wirklich kennt?","Welche kleine Eigenheit von Pia bringt dich immer zum Lächeln?","Wann hat Pia dich zuletzt überrascht – ganz ohne große Geste?","Was möchtest du mit Pia in eurem ersten Ehejahr unbedingt erleben?","Welchen gemeinsamen Moment würdest du gern noch einmal erleben?","Wofür bist du Pia heute besonders dankbar?","Was macht euren Alltag für dich heimelig?","Welche Stärke von Pia bewunderst du am meisten?","Welche Tradition möchtet ihr zwei unbedingt weiterführen oder erfinden?","Wie hilft dir Pia, du selbst zu sein?","Welche Erinnerung an euer Kennenlernen magst du besonders?","Welche Seite an Pia möchtest du noch besser kennenlernen?","Was wäre ein perfekter freier Sonntag zu zweit?","Wann fühlst du dich Pia besonders nah?","Welche Kleinigkeit wünschst du dir öfter von eurem gemeinsamen Alltag?","Was ist etwas, das Pia ganz selbstverständlich gut kann?","Welche gemeinsame Sache macht euch zu einem guten Team?","Welche drei Wörter beschreiben Pia als Partner für dich?","Was war in diesem Jahr ein stiller, schöner Glücksmoment mit Pia?","Welche Reise oder welches Abenteuer möchtet ihr zusammen planen?","Was möchtest du Pia für die Zukunft versprechen?","Worüber möchtest du mit Pia noch viel öfter lachen?","Welche liebevolle Nachricht würdest du Pia gern an einem schweren Tag geben?","Was wünschst du euch beiden für das nächste Weihnachtsfest?"],
+  pia: [
+    question("text", "Woran merkst du, dass Paul dich wirklich kennt?"),
+    question("choice", "Welche kleine Geste von Paul fühlt sich für dich am meisten nach Zuhause an?", ["Eine Umarmung", "Sein Humor", "Eine liebe Nachricht", "Etwas ganz anderes"]),
+    question("image", "Zeig Paul ein Foto von einem Moment, der dich heute noch glücklich macht.", [], "Ein gemeinsames Bild, ein Detail oder ein Ort – alles ist erlaubt."),
+    question("map", "Markiere den Ort, an dem ihr euch besonders nah gefühlt habt."),
+    question("drawing", "Male eine winzige Skizze von eurem perfekten freien Sonntag."),
+    question("audio", "Nimm eine kurze Sprachnachricht auf: Wofür bist du Paul heute dankbar?"),
+    question("link", "Schick Paul ein Lied, das gerade nach euch klingt.", [], "Ein Spotify-, YouTube- oder anderer Link."),
+    question("text", "Welche Stärke von Paul bewunderst du, auch wenn du es ihm viel zu selten sagst?"),
+    question("choice", "Welches Abenteuer passt am besten zu euch beiden?", ["Ein Wochenende am Meer", "Eine Städtereise", "Ein Bergausflug", "Ein gemütlicher Tag zuhause"]),
+    question("image", "Fotografiere etwas aus eurem Alltag, das dich an Paul erinnert."),
+    question("map", "Welchen Ort möchtet ihr unbedingt einmal zusammen besuchen?"),
+    question("drawing", "Zeichne Paul ein kleines Symbol für etwas, das euch zu einem guten Team macht."),
+    question("text", "Welche Erinnerung an euer Kennenlernen möchtest du niemals verlieren?"),
+    question("audio", "Erzähl Paul eine kleine Geschichte, über die ihr später zusammen lachen sollt."),
+    question("link", "Teile einen Film-, Podcast- oder Artikel-Link für euren nächsten gemeinsamen Abend."),
+    question("text", "Welche Kleinigkeit wünschst du dir öfter in eurem gemeinsamen Alltag?"),
+    question("choice", "Wann fühlst du dich Paul am nächsten?", ["Beim Reden", "Beim Lachen", "In stillen Momenten", "Wenn ihr etwas zusammen schafft"]),
+    question("image", "Mach ein Foto von deinem heutigen kleinen Glücksmoment."),
+    question("map", "Wo würdest du Paul gern einmal spontan zum Date entführen?"),
+    question("drawing", "Male eine kleine Postkarte aus eurer Wunsch-Zukunft."),
+    question("audio", "Sag Paul drei Dinge, die er ganz selbstverständlich gut kann."),
+    question("text", "Worüber möchtest du mit Paul im nächsten Jahr noch viel öfter lachen?"),
+    question("link", "Schenke Paul einen Link, der ihm an einem schweren Tag ein Lächeln schenken könnte."),
+    question("text", "Was wünschst du euch beiden für das nächste Weihnachtsfest?"),
+  ],
+  paul: [
+    question("text", "Woran merkst du, dass Pia dich wirklich kennt?"),
+    question("choice", "Welche Seite an Pia bringt dich am schnellsten zum Lächeln?", ["Ihr Lachen", "Ihre Fürsorge", "Ihre Ideen", "Ihre Eigenheiten"]),
+    question("audio", "Nimm eine kurze Nachricht auf: Was möchtest du Pia heute unbedingt sagen?"),
+    question("map", "Markiere den Ort, an dem du mit Pia eine besonders schöne Erinnerung hast."),
+    question("image", "Zeig Pia ein Foto von etwas, das du mit ihr erleben möchtest."),
+    question("drawing", "Zeichne eure Beziehung als Wetterbericht – Sonne, Wolken, Konfetti oder alles zusammen."),
+    question("link", "Schick Pia ein Lied, bei dem du sofort an sie denkst.", [], "Spotify, YouTube und andere Links funktionieren."),
+    question("text", "Welche Stärke von Pia bewunderst du besonders?"),
+    question("choice", "Was wäre euer perfekter freier Sonntag?", ["Lange frühstücken", "Draußen unterwegs sein", "Etwas Neues ausprobieren", "Einfach einkuscheln"]),
+    question("map", "Welchen Ort in eurer Nähe würdest du Pia gern einmal neu zeigen?"),
+    question("image", "Fotografiere eine Kleinigkeit, die euren Alltag für dich heimelig macht."),
+    question("audio", "Erzähl Pia von einem stillen Glücksmoment aus diesem Jahr."),
+    question("text", "Welche Tradition möchtet ihr zwei unbedingt weiterführen oder erfinden?"),
+    question("drawing", "Male ein Mini-Logo für euch als Team."),
+    question("link", "Teile einen Link zu etwas, das ihr bald gemeinsam ausprobieren könnt."),
+    question("text", "Wie hilft dir Pia dabei, du selbst zu sein?"),
+    question("choice", "Welche Erinnerung mit Pia würdest du gern noch einmal erleben?", ["Euer erstes Date", "Eine Reise", "Ein gemütlicher Abend", "Einen ganz normalen schönen Tag"]),
+    question("image", "Zeig Pia ein Foto, das sie unbedingt einmal mit deinen Augen sehen soll."),
+    question("map", "Wo möchtet ihr euch in ein paar Jahren gern wiederfinden?"),
+    question("audio", "Nimm ein kleines Zukunftsversprechen für Pia auf."),
+    question("drawing", "Zeichne das erste, woran du denkst, wenn du ‚Pia & Paul‘ hörst."),
+    question("text", "Welche liebevolle Nachricht würde Pia an einem schweren Tag guttun?"),
+    question("link", "Schenke Pia einen Link, der sie heute aufheitern könnte."),
+    question("text", "Was wünschst du euch beiden für das nächste Weihnachtsfest?"),
+  ],
 };
+
 let state = null;
-let selectedDay = 1;
+let selectedCalendarDay = 1;
+let selectedWorkshopDay = 1;
+let activeView = "calendar";
 let selectedPartner = "pia";
+let mapPicker = null;
+let mapLocation = null;
+let recorder = null;
+let recordedAudio = null;
+let drawingCanvas = null;
+let drawingDirty = false;
 
 function other(partner) { return partner === "pia" ? "paul" : "pia"; }
 function name(partner) { return partner === "pia" ? "Pia" : "Paul"; }
 function escape(value = "") { return String(value).replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]); }
 function token() { return localStorage.getItem(TOKEN_STORAGE_KEY) || ""; }
-function configureMessage() { return `<main class="welcome-shell"><section class="welcome-card"><div class="heart-mark">♥</div><p class="eyebrow">Fast geschafft</p><h1>Die Verbindung fehlt noch.</h1><p class="intro">Trage zuerst die Adresse eures Cloudflare-Workers in <code>config.js</code> ein. Danach läuft der Kalender ohne Anmeldung.</p></section></main>`; }
+function configureMessage() { return `<main class="welcome-shell"><section class="welcome-card"><div class="heart-mark">♥</div><p class="eyebrow">Fast geschafft</p><h1>Die Verbindung fehlt noch.</h1><p class="intro">Trage zuerst die Adresse eures Cloudflare-Workers in <code>config.js</code> ein.</p></section></main>`; }
+function kindLabel(kind) { return ({ text: "Text", choice: "Auswahl", image: "Foto", audio: "Sprachnachricht", drawing: "Zeichnung", map: "Ort", link: "Link" })[kind] || "Antwort"; }
+function mediaKey(answer) { return answer?.payload?.mediaKey || ""; }
+
 async function api(path, options = {}) {
   const headers = new Headers(options.headers || {});
   if (token()) headers.set("Authorization", `Bearer ${token()}`);
-  if (options.body) headers.set("Content-Type", "application/json");
+  if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   const response = await fetch(`${API}${path}`, { ...options, headers });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.error || "Das hat leider nicht geklappt.");
   return payload;
 }
+
 async function load() {
   if (!API) { app.innerHTML = configureMessage(); return; }
   try {
     state = await api("/api/calendar");
     if (!state.session) localStorage.removeItem(TOKEN_STORAGE_KEY);
-    if (state.status?.writeDay) selectedDay = state.status.writeDay;
-    else if (state.status?.revealThrough) selectedDay = state.status.revealThrough;
+    const revealed = state.status?.revealThrough || 1;
+    selectedCalendarDay = Math.min(Math.max(1, selectedCalendarDay), revealed || 1);
     render();
-  } catch (error) { app.innerHTML = `<main class="welcome-shell"><section class="welcome-card"><h1>Oh je.</h1><p class="intro">${escape(error.message)}</p><button class="primary-button" onclick="location.reload()">Noch einmal versuchen</button></section></main>`; }
+  } catch (error) {
+    app.innerHTML = `<main class="welcome-shell"><section class="welcome-card"><h1>Oh je.</h1><p class="intro">${escape(error.message)}</p><button class="primary-button" onclick="location.reload()">Noch einmal versuchen</button></section></main>`;
+  }
 }
+
 function render() {
   if (!state.session) { renderAccess(); return; }
-  renderCalendar();
+  renderApp();
 }
+
 function renderAccess(message = "") {
   const setup = !state.configured;
   app.innerHTML = `<main class="welcome-shell"><section class="welcome-card"><div class="heart-mark">♥</div><p class="eyebrow">Pia & Paul</p><h1>${setup ? "Euren Kalender einrichten" : "Willkommen zurück"}</h1><p class="intro">${setup ? "Lege einen gemeinsamen Schlüssel fest und teile ihn anschließend nur miteinander." : "Wähle deinen Namen und öffne euren gemeinsamen Adventskalender."}</p><form class="access-form" id="access-form"><fieldset><legend>Ich bin …</legend><div class="person-switch"><button type="button" data-person="pia" class="${selectedPartner === "pia" ? "selected" : ""}">Pia</button><button type="button" data-person="paul" class="${selectedPartner === "paul" ? "selected" : ""}">Paul</button></div></fieldset><label for="access-code">Gemeinsamer Schlüssel</label><div class="code-field">⌘ <input id="access-code" type="password" minlength="6" maxlength="80" autocomplete="current-password" placeholder="Mindestens 6 Zeichen" required></div>${message ? `<p class="form-message">${escape(message)}</p>` : ""}<button class="primary-button">${setup ? "Kalender anlegen" : "Kalender öffnen"}</button></form>${setup ? '<p class="fineprint">⌘ Der Schlüssel wird nicht lesbar gespeichert.</p>' : ""}</section></main>`;
   document.querySelectorAll("[data-person]").forEach((button) => button.addEventListener("click", () => { selectedPartner = button.dataset.person; renderAccess(); }));
   document.querySelector("#access-form").addEventListener("submit", async (event) => {
-    event.preventDefault(); const submit = event.currentTarget.querySelector("button.primary-button"); submit.disabled = true;
-    try { const result = await api(state.configured ? "/api/session" : "/api/setup", { method: "POST", body: JSON.stringify({ partner: selectedPartner, accessCode: document.querySelector("#access-code").value }) }); localStorage.setItem(TOKEN_STORAGE_KEY, result.token); await load(); }
-    catch (error) { renderAccess(error.message); }
+    event.preventDefault();
+    const submit = event.currentTarget.querySelector("button.primary-button");
+    submit.disabled = true;
+    try {
+      const result = await api(state.configured ? "/api/session" : "/api/setup", { method: "POST", body: JSON.stringify({ partner: selectedPartner, accessCode: document.querySelector("#access-code").value }) });
+      localStorage.setItem(TOKEN_STORAGE_KEY, result.token);
+      await load();
+    } catch (error) { renderAccess(error.message); }
   });
 }
-function renderCalendar(message = "") {
-  const { session, status, seasonYear, ownAnswers = {}, partnerAnswers = {} } = state;
-  const open = status.phase === "complete" || selectedDay <= (status.writeDay || status.revealThrough);
-  const editing = selectedDay === status.writeDay;
-  const own = ownAnswers[selectedDay] || "";
-  const received = partnerAnswers[selectedDay];
-  const heading = status.phase === "before" ? `Bereit für den 1. Dezember ${seasonYear}` : status.phase === "complete" ? "Alle Türchen sind offen" : `Heute ist Türchen ${status.writeDay}`;
-  const testDay = status.phase === "complete" ? 25 : (status.writeDay || 1);
-  const developerControls = TEST_MODE ? `<section class="developer-panel"><p class="eyebrow">Entwickler-Testmodus</p><form id="test-day-form"><label for="test-day">Simulierter Kalendertag</label><div class="test-day-controls"><select id="test-day">${days.map((day) => `<option value="${day}" ${day === testDay ? "selected" : ""}>${day}. Dezember</option>`).join("")}<option value="25" ${testDay === 25 ? "selected" : ""}>Nach dem 24. Dezember</option></select><button class="quiet-button" type="submit">Tag übernehmen</button></div></form><p>Diese Steuerung gibt es nur in der separaten Testumgebung.</p></section>` : "";
-  const doors = days.map((day) => { const unlocked = status.phase === "complete" || day <= (status.writeDay || 0); return `<button class="door ${unlocked ? "unlocked" : "locked"} ${selectedDay === day ? "active" : ""}" data-day="${day}" ${unlocked ? "" : "disabled"}><span>${day}</span>${partnerAnswers[day] ? "<b>♥</b>" : ownAnswers[day] ? "<em>•</em>" : ""}</button>`; }).join("");
-  let body = `<div class="locked-copy"><h2>Noch ein wenig Geduld.</h2><p>Dieses Türchen wartet geduldig auf seinen Tag.</p></div>`;
-  if (open) {
-    const ownBlock = editing ? `<form class="answer-form" id="answer-form"><label for="answer">Deine Antwort für ${name(other(session.partner))}</label><textarea id="answer" maxlength="2000" placeholder="Schreib, was dir gerade im Herzen liegt …" required>${escape(own)}</textarea><div class="answer-footer"><span id="count">${own.length}/2000</span><button class="primary-button">Antwort speichern</button></div></form>` : `<section class="own-note"><p class="note-label">Deine Antwort</p><p>${escape(own || "Für diesen Tag hast du keine Antwort gespeichert.")}</p></section>`;
-    const receivedBlock = received ? `<section class="received-note"><p class="note-label">Eine Nachricht von ${name(other(session.partner))}</p><p>${escape(received)}</p></section>` : (!editing ? `<p class="waiting-copy">${selectedDay <= status.revealThrough ? `${name(other(session.partner))} hat für dieses Türchen noch keine Antwort hinterlegt.` : "Die Antwort deines Partners wird morgen freigeschaltet."}</p>` : "");
-    body = `<h2>Für dich, ${name(session.partner)}.</h2><p class="question">${prompts[session.partner][selectedDay - 1]}</p>${ownBlock}${receivedBlock}${message ? `<p class="save-message">${escape(message)}</p>` : ""}`;
-  }
-  app.innerHTML = `<main class="app-shell"><header class="topbar"><div class="brand"><span class="mini-heart">♥</span><span>Pia <i>&</i> Paul</span></div><button class="quiet-button" id="signout">Abmelden</button></header><section class="hero-row"><div><p class="eyebrow">Adventskalender ${seasonYear}</p><h1>${heading}</h1></div><p class="hero-note">${status.phase === "active" ? "Deine Antwort bleibt bis Mitternacht nur für dich sichtbar." : status.phase === "before" ? "24 kleine Fragen warten auf euch." : "Ein Dezember voller kleiner Liebesbriefe."}</p></section>${developerControls}<section class="calendar-layout"><nav class="door-grid" aria-label="Adventstürchen">${doors}</nav><article class="door-detail"><div class="detail-top"><p class="eyebrow">${open ? `Türchen ${selectedDay}` : "Bis bald"}</p><span class="status-pill">${open ? "♥ geöffnet" : "⌘ verschlossen"}</span></div>${body}</article></section></main>`;
-  document.querySelectorAll("[data-day]").forEach((button) => button.addEventListener("click", () => { selectedDay = Number(button.dataset.day); renderCalendar(); }));
+
+function renderApp(message = "") {
+  const { session, status, seasonYear } = state;
+  const heading = status.phase === "before" ? `Bereit für den 1. Dezember ${seasonYear}` : status.phase === "complete" ? "Alle Türchen sind offen" : `Dezember ${seasonYear}`;
+  const developerControls = TEST_MODE ? renderDeveloperControls(status) : "";
+  app.innerHTML = `<main class="app-shell"><header class="topbar"><div class="brand"><span class="mini-heart">♥</span><span>Pia <i>&</i> Paul</span></div><button class="quiet-button" id="signout">Abmelden</button></header><section class="hero-row"><div><p class="eyebrow">Adventskalender</p><h1>${heading}</h1></div><p class="hero-note">${activeView === "calendar" ? `Für dich: die kleinen Überraschungen von ${name(other(session.partner))}.` : `Deine Werkstatt: Bereite alle 24 Überraschungen für ${name(other(session.partner))} vor.`}</p></section><nav class="view-switch" aria-label="Bereich wählen"><button data-view="calendar" class="${activeView === "calendar" ? "selected" : ""}">♥ Dein Kalender</button><button data-view="workshop" class="${activeView === "workshop" ? "selected" : ""}">✦ Deine Werkstatt</button></nav>${developerControls}${activeView === "calendar" ? renderCalendar() : renderWorkshop(message)}</main>`;
   document.querySelector("#signout").addEventListener("click", () => { localStorage.removeItem(TOKEN_STORAGE_KEY); state.session = null; render(); });
-  const testForm = document.querySelector("#test-day-form"); if (testForm) testForm.addEventListener("submit", async (event) => { event.preventDefault(); const button = testForm.querySelector("button"); button.disabled = true; try { await api("/api/test/day", { method: "POST", body: JSON.stringify({ day: Number(document.querySelector("#test-day").value) }) }); await load(); } catch (error) { renderCalendar(error.message); } });
-  const textarea = document.querySelector("#answer"); if (textarea) textarea.addEventListener("input", () => { document.querySelector("#count").textContent = `${textarea.value.length}/2000`; });
-  const form = document.querySelector("#answer-form"); if (form) form.addEventListener("submit", async (event) => { event.preventDefault(); const button = form.querySelector("button"); button.disabled = true; try { const result = await api("/api/answers", { method: "PUT", body: JSON.stringify({ day: selectedDay, content: textarea.value }) }); state.ownAnswers[selectedDay] = result.content; renderCalendar("Gespeichert. Du kannst sie bis Mitternacht noch ändern."); } catch (error) { renderCalendar(error.message); } });
+  document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => { activeView = button.dataset.view; renderApp(); }));
+  bindDeveloperControls();
+  if (activeView === "calendar") bindCalendar(); else bindWorkshop();
 }
+
+function renderDeveloperControls(status) {
+  const testDay = status.phase === "complete" ? 25 : (status.writeDay || 1);
+  return `<section class="developer-panel"><p class="eyebrow">Entwickler-Testmodus</p><form id="test-day-form"><label for="test-day">Simulierter Kalendertag</label><div class="test-day-controls"><select id="test-day">${days.map((day) => `<option value="${day}" ${day === testDay ? "selected" : ""}>${day}. Dezember</option>`).join("")}<option value="25" ${testDay === 25 ? "selected" : ""}>Nach dem 24. Dezember</option></select><button class="quiet-button" type="submit">Tag übernehmen</button></div></form><p>Diese Steuerung gibt es nur in der separaten Testumgebung.</p></section>`;
+}
+
+function bindDeveloperControls() {
+  const testForm = document.querySelector("#test-day-form");
+  if (testForm) testForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try { await api("/api/test/day", { method: "POST", body: JSON.stringify({ day: Number(document.querySelector("#test-day").value) }) }); await load(); }
+    catch (error) { renderApp(error.message); }
+  });
+}
+
+function renderCalendar() {
+  const { session, status, partnerAnswers = {}, seenDays = [] } = state;
+  const revealed = status.revealThrough || 0;
+  const doors = days.map((day) => {
+    const unlocked = day <= revealed;
+    const answer = partnerAnswers[day];
+    const seen = seenDays.includes(day);
+    const stateClass = !unlocked ? "locked" : answer ? (seen ? "seen" : "new") : "missing";
+    const symbol = !unlocked ? "⌘" : answer ? (seen ? "✓" : "♥") : "⌛";
+    return `<button class="door calendar-door ${stateClass} ${selectedCalendarDay === day ? "active" : ""}" data-calendar-day="${day}" ${unlocked ? "" : "disabled"}><span>${day}</span><b aria-hidden="true">${symbol}</b></button>`;
+  }).join("");
+  const unlocked = selectedCalendarDay <= revealed;
+  const partner = other(session.partner);
+  const prompt = prompts[partner][selectedCalendarDay - 1];
+  const answer = partnerAnswers[selectedCalendarDay];
+  const detail = !unlocked ? `<div class="locked-copy"><h2>Noch ein wenig Geduld.</h2><p>Dieses Türchen öffnet sich an seinem Dezembertag.</p></div>` : `<p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${answer ? renderAnswer(answer) : `<section class="waiting-copy"><span>⌛</span><p>${name(partner)} hat dieses Türchen noch nicht gefüllt. Vielleicht kommt die Überraschung etwas später.</p></section>`}`;
+  return `<section class="calendar-layout"><nav class="door-grid" aria-label="Deine Adventstürchen">${doors}</nav><article class="door-detail"><div class="detail-top"><p class="eyebrow">${unlocked ? `Türchen ${selectedCalendarDay}` : "Bis bald"}</p><span class="status-pill">${unlocked ? "♥ für dich" : "⌘ verschlossen"}</span></div>${detail}</article></section><p class="legend"><span class="legend-new">♥</span> neue Überraschung <span class="legend-seen">✓</span> schon angesehen <span class="legend-missing">⌛</span> noch offen</p>`;
+}
+
+function renderAnswer(answer) {
+  if (answer.kind === "image" || answer.kind === "drawing") return `<section class="received-note media-answer"><p class="note-label">${answer.kind === "drawing" ? "Eine Zeichnung für dich" : "Ein Foto für dich"}</p><div class="media-slot image-slot" data-media-kind="image" data-media-key="${escape(mediaKey(answer))}">Wird geladen …</div></section>`;
+  if (answer.kind === "audio") return `<section class="received-note media-answer"><p class="note-label">Eine Sprachnachricht für dich</p><div class="media-slot audio-slot" data-media-kind="audio" data-media-key="${escape(mediaKey(answer))}">Wird geladen …</div></section>`;
+  if (answer.kind === "map") {
+    const { lat, lng, label = "Dieser Ort" } = answer.payload || {};
+    const url = `https://www.openstreetmap.org/?mlat=${encodeURIComponent(lat)}&mlon=${encodeURIComponent(lng)}#map=15/${encodeURIComponent(lat)}/${encodeURIComponent(lng)}`;
+    return `<section class="received-note"><p class="note-label">Ein Ort für euch</p><p>${escape(label)}</p><a class="map-link" href="${url}" target="_blank" rel="noopener">Ort auf OpenStreetMap ansehen ↗</a></section>`;
+  }
+  if (answer.kind === "link") return `<section class="received-note"><p class="note-label">Ein Link für dich</p><a class="shared-link" href="${escape(answer.content)}" target="_blank" rel="noopener">${escape(answer.content)} ↗</a></section>`;
+  return `<section class="received-note"><p class="note-label">${answer.kind === "choice" ? "Die Wahl von " + name(other(state.session.partner)) : "Eine Nachricht für dich"}</p><p>${escape(answer.content)}</p></section>`;
+}
+
+function bindCalendar() {
+  document.querySelectorAll("[data-calendar-day]").forEach((button) => button.addEventListener("click", async () => {
+    selectedCalendarDay = Number(button.dataset.calendarDay);
+    if (!state.seenDays.includes(selectedCalendarDay)) {
+      state.seenDays.push(selectedCalendarDay);
+      api("/api/doors/open", { method: "POST", body: JSON.stringify({ day: selectedCalendarDay }) }).catch(() => state.seenDays = state.seenDays.filter((day) => day !== selectedCalendarDay));
+    }
+    renderApp();
+  }));
+  hydrateMedia();
+}
+
+function renderWorkshop(message = "") {
+  const { session, status, ownAnswers = {} } = state;
+  const today = status.phase === "active" ? status.writeDay : status.phase === "complete" ? 25 : 0;
+  const doors = days.map((day) => {
+    const answer = ownAnswers[day];
+    const stateClass = answer ? "complete" : day < today ? "overdue" : day === today ? "today" : "upcoming";
+    const marker = answer ? "✓" : day < today ? "⌛" : day === today ? "•" : "";
+    return `<button class="door workshop-door ${stateClass} ${selectedWorkshopDay === day ? "active" : ""}" data-workshop-day="${day}"><span>${day}</span><b aria-hidden="true">${marker}</b></button>`;
+  }).join("");
+  const prompt = prompts[session.partner][selectedWorkshopDay - 1];
+  const answer = ownAnswers[selectedWorkshopDay];
+  return `<section class="calendar-layout workshop-layout"><nav class="door-grid" aria-label="Deine Werkstatt-Türchen">${doors}</nav><article class="door-detail workshop-detail"><div class="detail-top"><p class="eyebrow">Werkstatt · Türchen ${selectedWorkshopDay}</p><span class="status-pill">${answer ? "✓ vorbereitet" : selectedWorkshopDay < today ? "⌛ nachholen" : "✦ frei gestaltbar"}</span></div><p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${prompt.hint ? `<p class="prompt-hint">${escape(prompt.hint)}</p>` : ""}${renderEditor(prompt, answer)}${message ? `<p class="save-message">${escape(message)}</p>` : ""}</article></section><p class="legend"><span class="legend-complete">✓</span> vorbereitet <span class="legend-missing">⌛</span> nachholen <span class="legend-today">•</span> heute</p>`;
+}
+
+function renderEditor(prompt, answer) {
+  const old = answer || {};
+  if (prompt.kind === "text") return `<form class="answer-form" id="answer-form"><label for="answer">Deine Antwort für ${name(other(state.session.partner))}</label><textarea id="answer" maxlength="2000" placeholder="Schreib, was dir gerade im Herzen liegt …" required>${escape(old.content || "")}</textarea><div class="answer-footer"><span id="count">${(old.content || "").length}/2000</span><button class="primary-button">Antwort speichern</button></div></form>`;
+  if (prompt.kind === "choice") return `<form class="answer-form" id="answer-form"><fieldset class="choice-list"><legend>Deine Wahl für ${name(other(state.session.partner))}</legend>${prompt.options.map((option) => `<label class="choice-option"><input type="radio" name="choice" value="${escape(option)}" ${old.content === option ? "checked" : ""} required><span>${escape(option)}</span></label>`).join("")}</fieldset><button class="primary-button">Antwort speichern</button></form>`;
+  if (prompt.kind === "link") return `<form class="answer-form" id="answer-form"><label for="answer">Link für ${name(other(state.session.partner))}</label><input class="answer-input" id="answer" type="url" placeholder="https://…" value="${escape(old.content || "")}" required><p class="field-hint">Spotify, YouTube, Mediathek oder jeder andere Link – ohne Konto-Verknüpfung.</p><button class="primary-button">Link speichern</button></form>`;
+  if (prompt.kind === "image") return renderMediaEditor("image", old, "Foto auswählen", "Ein neues Foto ersetzt das bisherige.");
+  if (prompt.kind === "audio") return renderMediaEditor("audio", old, "Audiodatei auswählen", "Oder nimm direkt hier eine kurze Nachricht auf.");
+  if (prompt.kind === "drawing") return `<form class="answer-form" id="answer-form"><label>Deine Zeichnung für ${name(other(state.session.partner))}</label>${old.payload?.mediaKey ? `<div class="existing-media" data-media-kind="image" data-media-key="${escape(old.payload.mediaKey)}">Bisherige Zeichnung wird geladen …</div>` : ""}<canvas id="drawing-canvas" width="900" height="560" aria-label="Zeichenfläche"></canvas><div class="draw-tools"><button type="button" class="quiet-button" id="clear-drawing">Zeichnung löschen</button><span>Mit dem Finger oder der Maus malen</span></div><button class="primary-button">Zeichnung speichern</button></form>`;
+  if (prompt.kind === "map") {
+    const location = old.payload || { lat: 52.52, lng: 13.405, label: "" };
+    return `<form class="answer-form" id="answer-form"><label for="place-label">Wie möchtest du diesen Ort nennen?</label><input class="answer-input" id="place-label" maxlength="200" placeholder="Zum Beispiel: Unser Lieblingscafé" value="${escape(location.label || "")}" required><div id="map-picker" class="map-picker"></div><p class="field-hint" id="map-coordinates">Tippe auf die Karte, um den Ort festzulegen.</p><button type="button" class="quiet-button locate-button" id="locate-me">Meinen aktuellen Standort verwenden</button><button class="primary-button">Ort speichern</button></form>`;
+  }
+  return "";
+}
+
+function renderMediaEditor(kind, old, label, hint) {
+  const accept = kind === "audio" ? "audio/webm,audio/mp4,audio/mpeg,audio/ogg,audio/wav" : "image/jpeg,image/png,image/webp,image/gif";
+  const previous = old.payload?.mediaKey ? `<div class="existing-media" data-media-kind="${kind === "audio" ? "audio" : "image"}" data-media-key="${escape(old.payload.mediaKey)}">Bisheriger Beitrag wird geladen …</div>` : "";
+  const recorderUi = kind === "audio" ? `<button type="button" class="record-button" id="record-audio">● Aufnahme starten</button><span id="record-status" class="field-hint"></span>` : "";
+  return `<form class="answer-form" id="answer-form"><label for="media-file">${label}</label>${previous}<input class="file-input" id="media-file" type="file" accept="${accept}"><p class="field-hint">${hint}</p><div class="record-row">${recorderUi}</div><button class="primary-button">${kind === "audio" ? "Sprachnachricht speichern" : "Foto speichern"}</button></form>`;
+}
+
+function bindWorkshop() {
+  document.querySelectorAll("[data-workshop-day]").forEach((button) => button.addEventListener("click", () => { selectedWorkshopDay = Number(button.dataset.workshopDay); renderApp(); }));
+  const prompt = prompts[state.session.partner][selectedWorkshopDay - 1];
+  const answer = state.ownAnswers[selectedWorkshopDay];
+  const textarea = document.querySelector("#answer");
+  if (textarea?.tagName === "TEXTAREA") textarea.addEventListener("input", () => document.querySelector("#count").textContent = `${textarea.value.length}/2000`);
+  const form = document.querySelector("#answer-form");
+  if (form) form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const button = form.querySelector(".primary-button");
+    button.disabled = true;
+    try {
+      const result = await saveWorkshopAnswer(prompt, answer);
+      state.ownAnswers[selectedWorkshopDay] = result;
+      renderApp("Gespeichert – du kannst deinen Beitrag jederzeit noch ändern.");
+    } catch (error) {
+      button.disabled = false;
+      const message = document.createElement("p");
+      message.className = "save-message";
+      message.textContent = error.message;
+      form.append(message);
+    }
+  });
+  if (prompt.kind === "audio") setupRecorder();
+  if (prompt.kind === "drawing") setupDrawing();
+  if (prompt.kind === "map") setupMap(answer?.payload);
+  hydrateMedia();
+}
+
+async function saveWorkshopAnswer(prompt, previous) {
+  let content = "";
+  let payload = null;
+  if (prompt.kind === "text" || prompt.kind === "link") content = document.querySelector("#answer").value;
+  if (prompt.kind === "choice") content = document.querySelector('input[name="choice"]:checked')?.value || "";
+  if (prompt.kind === "map") {
+    if (!mapLocation) throw new Error("Bitte wähle einen Punkt auf der Karte.");
+    const label = document.querySelector("#place-label").value.trim();
+    content = label || "Ein Ort für euch";
+    payload = { ...mapLocation, label };
+  }
+  if (["image", "audio", "drawing"].includes(prompt.kind)) {
+    let file = document.querySelector("#media-file")?.files?.[0] || null;
+    if (prompt.kind === "audio" && recordedAudio) file = recordedAudio;
+    if (prompt.kind === "drawing" && drawingDirty) file = await canvasFile();
+    if (file) payload = await uploadMedia(file, prompt.kind);
+    else if (previous?.payload?.mediaKey) payload = previous.payload;
+    else throw new Error(prompt.kind === "audio" ? "Bitte nimm etwas auf oder wähle eine Audiodatei." : "Bitte wähle oder erstelle ein Bild.");
+    content = prompt.kind === "audio" ? "Eine Sprachnachricht" : prompt.kind === "drawing" ? "Eine Zeichnung" : "Ein Foto";
+  }
+  return api("/api/answers", { method: "PUT", body: JSON.stringify({ day: selectedWorkshopDay, kind: prompt.kind, content, payload }) });
+}
+
+async function uploadMedia(file, kind) {
+  const response = await fetch(`${API}/api/media?kind=${encodeURIComponent(kind)}`, { method: "POST", headers: { Authorization: `Bearer ${token()}`, "Content-Type": file.type || (kind === "audio" ? "audio/webm" : "image/png") }, body: file });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || "Die Datei konnte nicht hochgeladen werden.");
+  return { mediaKey: payload.key, mimeType: payload.mimeType };
+}
+
+function setupRecorder() {
+  const button = document.querySelector("#record-audio");
+  if (!button || !navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return;
+  button.addEventListener("click", async () => {
+    const status = document.querySelector("#record-status");
+    if (recorder?.state === "recording") { recorder.stop(); return; }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const chunks = [];
+      recorder = new MediaRecorder(stream);
+      recorder.addEventListener("dataavailable", (event) => event.data.size && chunks.push(event.data));
+      recorder.addEventListener("stop", () => {
+        recordedAudio = new File([new Blob(chunks, { type: recorder.mimeType || "audio/webm" })], "sprachnachricht.webm", { type: recorder.mimeType || "audio/webm" });
+        stream.getTracks().forEach((track) => track.stop());
+        button.textContent = "● Aufnahme neu starten";
+        status.textContent = "Aufnahme bereit zum Speichern.";
+      });
+      recorder.start();
+      button.textContent = "■ Aufnahme beenden";
+      status.textContent = "Aufnahme läuft …";
+    } catch { status.textContent = "Das Mikrofon ist nicht verfügbar. Du kannst stattdessen eine Audiodatei auswählen."; }
+  });
+}
+
+function setupDrawing() {
+  drawingCanvas = document.querySelector("#drawing-canvas");
+  drawingDirty = false;
+  if (!drawingCanvas) return;
+  const context = drawingCanvas.getContext("2d");
+  context.fillStyle = "#fffdf9";
+  context.fillRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+  context.strokeStyle = "#941f42";
+  context.lineWidth = 9;
+  context.lineCap = "round";
+  let drawing = false;
+  const point = (event) => {
+    const rect = drawingCanvas.getBoundingClientRect();
+    return { x: (event.clientX - rect.left) * drawingCanvas.width / rect.width, y: (event.clientY - rect.top) * drawingCanvas.height / rect.height };
+  };
+  drawingCanvas.addEventListener("pointerdown", (event) => { drawing = true; drawingCanvas.setPointerCapture(event.pointerId); const p = point(event); context.beginPath(); context.moveTo(p.x, p.y); });
+  drawingCanvas.addEventListener("pointermove", (event) => { if (!drawing) return; const p = point(event); context.lineTo(p.x, p.y); context.stroke(); drawingDirty = true; });
+  drawingCanvas.addEventListener("pointerup", () => drawing = false);
+  document.querySelector("#clear-drawing").addEventListener("click", () => { context.fillStyle = "#fffdf9"; context.fillRect(0, 0, drawingCanvas.width, drawingCanvas.height); drawingDirty = true; });
+}
+
+function canvasFile() {
+  return new Promise((resolve, reject) => drawingCanvas.toBlob((blob) => blob ? resolve(new File([blob], "zeichnung.png", { type: "image/png" })) : reject(new Error("Die Zeichnung konnte nicht vorbereitet werden.")), "image/png"));
+}
+
+function setupMap(savedLocation) {
+  mapLocation = savedLocation && typeof savedLocation.lat === "number" ? { lat: savedLocation.lat, lng: savedLocation.lng } : null;
+  const element = document.querySelector("#map-picker");
+  const coordinateCopy = document.querySelector("#map-coordinates");
+  if (!element || !window.L) {
+    coordinateCopy.textContent = "Die Kartenansicht konnte nicht geladen werden. Bitte versuche es mit einer Internetverbindung erneut.";
+    return;
+  }
+  const initial = mapLocation || { lat: 52.52, lng: 13.405 };
+  mapPicker = window.L.map(element).setView([initial.lat, initial.lng], mapLocation ? 14 : 5);
+  window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap-Mitwirkende" }).addTo(mapPicker);
+  let marker = null;
+  const setMarker = (latlng) => {
+    mapLocation = { lat: Number(latlng.lat.toFixed(6)), lng: Number(latlng.lng.toFixed(6)) };
+    if (marker) marker.setLatLng(latlng); else marker = window.L.marker(latlng).addTo(mapPicker);
+    coordinateCopy.textContent = `Ausgewählt: ${mapLocation.lat}, ${mapLocation.lng}`;
+  };
+  if (mapLocation) setMarker(initial);
+  mapPicker.on("click", (event) => setMarker(event.latlng));
+  document.querySelector("#locate-me").addEventListener("click", () => navigator.geolocation?.getCurrentPosition((position) => {
+    const latlng = { lat: position.coords.latitude, lng: position.coords.longitude };
+    mapPicker.setView(latlng, 15);
+    setMarker(latlng);
+  }, () => coordinateCopy.textContent = "Der Standort konnte nicht abgerufen werden. Wähle den Punkt einfach auf der Karte."));
+}
+
+async function hydrateMedia() {
+  const slots = [...document.querySelectorAll("[data-media-key]")];
+  await Promise.all(slots.map(async (slot) => {
+    const key = slot.dataset.mediaKey;
+    if (!key) return;
+    try {
+      const response = await fetch(`${API}/api/media/${encodeURIComponent(key)}`, { headers: { Authorization: `Bearer ${token()}` } });
+      if (!response.ok) throw new Error();
+      const url = URL.createObjectURL(await response.blob());
+      slot.innerHTML = slot.dataset.mediaKind === "audio" ? `<audio controls src="${url}">Dein Browser kann diese Aufnahme nicht abspielen.</audio>` : `<img src="${url}" alt="Eine persönliche Überraschung">`;
+    } catch { slot.textContent = "Dieser Beitrag konnte gerade nicht geladen werden."; }
+  }));
+}
+
 load();

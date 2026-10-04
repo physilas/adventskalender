@@ -1,0 +1,18 @@
+ALTER TABLE answers ADD COLUMN kind TEXT NOT NULL DEFAULT 'text';
+ALTER TABLE answers ADD COLUMN payload TEXT;
+
+CREATE TABLE door_views (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  day INTEGER NOT NULL CHECK (day BETWEEN 1 AND 24),
+  viewer TEXT NOT NULL CHECK (viewer IN ('pia', 'paul')),
+  viewed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (day, viewer)
+);
+
+CREATE TABLE media (
+  key TEXT PRIMARY KEY,
+  owner TEXT NOT NULL CHECK (owner IN ('pia', 'paul')),
+  mime_type TEXT NOT NULL,
+  body BLOB NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
