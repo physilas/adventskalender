@@ -11,21 +11,21 @@ const piaHouseRanking = [
   { id: "tropenhaus", word: "Tropisch", label: "Das tropische Haus mit Hängematte", image: "https://unsplash.com/photos/rpwWARDyQy0/download?force=true&w=900" },
 ];
 const paulFlowerRanking = [
-  { id: "sonnenblumen", label: "Sonnenblumen", image: "https://images.unsplash.com/photo-1757904257403-be898c4fbc2f?auto=format&fit=crop&w=900&q=82" },
-  { id: "wildblumen", label: "Wildblumen", image: "https://images.unsplash.com/photo-1654409586056-8de6ac831ec5?auto=format&fit=crop&w=900&q=82" },
-  { id: "pfingstrosen", label: "Pfingstrosen", image: "https://images.unsplash.com/photo-1591963944277-fe153988e471?auto=format&fit=crop&w=900&q=82" },
-  { id: "tulpen", label: "Tulpen", image: "https://images.unsplash.com/photo-1520763185298-1b434c919102?auto=format&fit=crop&w=900&q=82" },
+  { id: "pastellstrauss", label: "Der pastellfarbene Strauß", image: "https://unsplash.com/photos/K5aPU3Sp7UE/download?force=true&w=900" },
+  { id: "wildblumenstrauss", label: "Der Wildblumenstrauß", image: "https://unsplash.com/photos/ha0D2ocbHaw/download?force=true&w=900" },
+  { id: "papierstrauss", label: "Der Strauß im Papier", image: "https://unsplash.com/photos/i2uepvI1jHc/download?force=true&w=900" },
+  { id: "weissgruen", label: "Der weiß-grüne Strauß", image: "https://unsplash.com/photos/UQl_-yabQiA/download?force=true&w=900" },
 ];
 const prompts = {
   pia: [
     question("map", "Welchen Christkindlmarkt möchtest du mit Paul besuchen?"),
     question("text", "Welcher Bibelcharakter wäre Paul und warum?"),
-    question("ranking", "Welche Blumen würde Paul am liebsten mögen?", paulFlowerRanking, "Sortiere die Blumen: Oben ist Platz 1."),
+    question("ranking", "Welche Blumensträuße würde Paul am liebsten mögen?", paulFlowerRanking, "Sortiere die Sträuße: Oben ist Platz 1."),
     question("drawing-riddle", "Zeichne einen Gegenstand, den du mit Paul verbindest. Paul darf raten, was es ist."),
     question("text", "Welches Weihnachtsgebäck solltet ihr unbedingt zusammen backen?"),
-    question("audio", "Und pünktlich zum sex-ten Dezember: Was findest du an Paul besonders sexy? Flüstere es ihm ins Ohr."),
+    question("offline", "Und pünktlich zum sex-ten Dezember: Was findest du an Paul besonders sexy?"),
     question("link", "Schick Paul ein Weihnachtslied.", [], "Ein Spotify-, YouTube- oder anderer Link."),
-    question("audio", "Nenne drei Dinge, die Paul ganz selbstverständlich gut kann."),
+    question("text", "Nenne drei Dinge, die Paul ganz selbstverständlich gut kann."),
     question("audio", "Erzähl Paul von deinem Lieblingsmoment auf eurer Hochzeit."),
     question("text", "Welche Advents- oder Weihnachtstradition möchtet ihr weiterführen oder neu erfinden?"),
     question("map", "Wenn alles möglich wäre: Wohin würdest du mit Paul reisen?"),
@@ -46,7 +46,7 @@ const prompts = {
   paul: [
     question("audio", "Erzähl Pia einen Weihnachtswitz."),
     question("image", "Schick Pia dein Lieblingsfoto von eurer Hochzeit."),
-    question("choice-custom", "Auf welches Weihnachtsdate hättest du Lust?", ["Über einen Weihnachtsmarkt schlendern", "Schlittschuhlaufen", "Gemütlicher Filmabend", "Eigene Date-Idee"]),
+    question("choice-custom", "Auf welches Weihnachtsdate hättest du Lust?", ["Konzert oder Theater (Tipp: U30-Tickets)", "Schlittschuhlaufen", "Café-Hopping", "Eigene Date-Idee"]),
     question("text", "Was hast du in der Ehe neu an Pia kennen und lieben gelernt?"),
     question("audio", "Welches Geräusch macht Pia häufiger mal?"),
     question("text", "Wenn Pia ein Weihnachts-Snack wäre, welcher wäre sie und warum?"),
@@ -122,7 +122,7 @@ function lockedQuip(day, partner, year) {
   return quips[(position + offset) % quips.length];
 }
 function configureMessage() { return `<main class="welcome-shell"><section class="welcome-card"><div class="heart-mark">♥</div><p class="eyebrow">Fast geschafft</p><h1>Die Verbindung fehlt noch.</h1><p class="intro">Trage zuerst die Adresse eures Cloudflare-Workers in <code>config.js</code> ein.</p></section></main>`; }
-function kindLabel(kind) { return ({ text: "Text", choice: "Auswahl", "choice-custom": "Auswahl", ranking: "Ranking", image: "Foto", audio: "Sprachnachricht", drawing: "Zeichnung", "drawing-riddle": "Zeichenrätsel", map: "Ort", link: "Link", gift: "Überraschung" })[kind] || "Antwort"; }
+function kindLabel(kind) { return ({ text: "Text", choice: "Auswahl", "choice-custom": "Auswahl", ranking: "Ranking", image: "Foto", audio: "Sprachnachricht", drawing: "Zeichnung", "drawing-riddle": "Zeichenrätsel", map: "Ort", link: "Link", offline: "Ganz in echt", gift: "Überraschung" })[kind] || "Antwort"; }
 function mediaKey(answer) { return answer?.payload?.mediaKey || ""; }
 function seededValue(seed) { return Math.abs(Math.sin(seed * 127.1 + 311.7) * 43758.5453) % 1; }
 function triangularFourier(value, modes = 9) {
@@ -233,7 +233,7 @@ function renderCalendar() {
   const doors = shuffledDoorDays(session.partner, state.seasonYear).map((day) => {
     const unlocked = day <= revealed;
     const answer = partnerAnswers[day];
-    const isGift = prompts[other(session.partner)][day - 1].kind === "gift";
+    const isGift = ["gift", "offline"].includes(prompts[other(session.partner)][day - 1].kind);
     const seen = seenDays.includes(day);
     const stateClass = !unlocked ? "locked" : isGift || answer ? (seen ? "seen" : "new") : "missing";
     const symbol = !unlocked ? "🔒" : isGift || answer ? (seen ? "✓" : "♥") : "◷";
@@ -243,7 +243,7 @@ function renderCalendar() {
   const partner = other(session.partner);
   const prompt = prompts[partner][selectedCalendarDay - 1];
   const answer = partnerAnswers[selectedCalendarDay];
-  const detail = !unlocked ? `<div class="locked-copy"><h2>${lockedQuip(selectedCalendarDay, session.partner, state.seasonYear)}</h2><p>Dieses Türchen öffnet sich am ${selectedCalendarDay}. Dezember. Bis dahin bleibt die Überraschung ganz tapfer geheim.</p></div>` : prompt.kind === "gift" ? renderGiftCopy() : `<p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${answer ? renderAnswer(answer, prompt) : `<section class="waiting-copy"><span>◷</span><p>${name(partner)} hat dieses Türchen noch nicht gefüllt. Vielleicht kommt die Überraschung etwas später.</p></section>`}`;
+  const detail = !unlocked ? `<div class="locked-copy"><h2>${lockedQuip(selectedCalendarDay, session.partner, state.seasonYear)}</h2><p>Dieses Türchen öffnet sich am ${selectedCalendarDay}. Dezember. Bis dahin bleibt die Überraschung ganz tapfer geheim.</p></div>` : prompt.kind === "gift" ? renderGiftCopy() : prompt.kind === "offline" ? renderOfflineCalendarCopy() : `<p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${answer ? renderAnswer(answer, prompt) : `<section class="waiting-copy"><span>◷</span><p>${name(partner)} hat dieses Türchen noch nicht gefüllt. Vielleicht kommt die Überraschung etwas später.</p></section>`}`;
   const modal = calendarDetailOpen ? `<section class="calendar-modal" role="dialog" aria-modal="true" aria-labelledby="door-title"><article class="door-detail"><button class="modal-close" type="button" aria-label="Türchen schließen">×</button><div class="detail-top"><p class="eyebrow">${unlocked ? `Türchen ${selectedCalendarDay}` : "Bis bald"}</p><span class="status-pill">${unlocked ? "♥ für dich" : "🔒 verschlossen"}</span></div><div id="door-title">${detail}</div></article></section>` : "";
   return `<section class="calendar-layout calendar-layout--calendar"><nav class="door-grid" aria-label="Deine Adventstürchen">${doors}</nav></section>${modal}<p class="legend calendar-legend"><span class="legend-new">♥</span> neue Überraschung <span class="legend-seen">✓</span> schon angesehen <span class="legend-missing">◷</span> noch offen</p>`;
 }
@@ -283,7 +283,7 @@ function bindCalendar() {
     calendarDetailOpen = true;
     const unlocked = selectedCalendarDay <= (state.status.revealThrough || 0);
     const partner = other(state.session.partner);
-    const hasVisibleSurprise = Boolean(state.partnerAnswers[selectedCalendarDay]) || prompts[partner][selectedCalendarDay - 1].kind === "gift";
+    const hasVisibleSurprise = Boolean(state.partnerAnswers[selectedCalendarDay]) || ["gift", "offline"].includes(prompts[partner][selectedCalendarDay - 1].kind);
     if (unlocked && hasVisibleSurprise && !state.seenDays.includes(selectedCalendarDay)) {
       state.seenDays.push(selectedCalendarDay);
       api("/api/doors/open", { method: "POST", body: JSON.stringify({ day: selectedCalendarDay }) }).catch(() => state.seenDays = state.seenDays.filter((day) => day !== selectedCalendarDay));
@@ -301,20 +301,23 @@ function renderWorkshop(message = "") {
   const today = status.phase === "active" ? status.writeDay : status.phase === "complete" ? 25 : 0;
   const doors = days.map((day) => {
     const answer = ownAnswers[day];
-    const isGift = prompts[session.partner][day - 1].kind === "gift";
-    const stateClass = isGift || answer ? "complete" : day < today ? "overdue" : day === today ? "today" : "upcoming";
-    const marker = isGift || answer ? "✓" : day < today ? "!" : day === today ? "•" : "";
+    const isSelfContained = ["gift", "offline"].includes(prompts[session.partner][day - 1].kind);
+    const stateClass = isSelfContained || answer ? "complete" : day < today ? "overdue" : day === today ? "today" : "upcoming";
+    const marker = isSelfContained || answer ? "✓" : day < today ? "!" : day === today ? "•" : "";
     return `<button class="door workshop-door ${stateClass} ${selectedWorkshopDay === day ? "active" : ""}" data-workshop-day="${day}">${mountain(day)}<span>${day}</span><b aria-hidden="true">${marker}</b></button>`;
   }).join("");
   const prompt = prompts[session.partner][selectedWorkshopDay - 1];
   const answer = ownAnswers[selectedWorkshopDay];
   const isGift = prompt.kind === "gift";
+  const isOffline = prompt.kind === "offline";
   const canRetract = state.withdrawableDays?.includes(selectedWorkshopDay);
   const retractControl = answer ? canRetract ? `<button type="button" class="retract-button" id="retract-answer">Antwort zurückziehen</button>` : `<p class="retract-note">Diese Antwort wurde schon geöffnet und bleibt deshalb als Überraschung erhalten.</p>` : "";
-  return `<section class="calendar-layout workshop-layout"><nav class="door-grid" aria-label="Deine Werkstatt-Türchen">${doors}</nav><article class="door-detail workshop-detail"><div class="detail-top"><p class="eyebrow">Werkstatt · Türchen ${selectedWorkshopDay}</p><span class="status-pill">${isGift ? "✓ vorbereitet" : answer ? "✓ vorbereitet" : selectedWorkshopDay < today ? "! nachholen" : "✦ frei gestaltbar"}</span></div>${isGift ? renderGiftCopy() : `<p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${prompt.hint ? `<p class="prompt-hint">${escape(prompt.hint)}</p>` : ""}${renderEditor(prompt, answer)}${retractControl}${message ? `<p class="save-message">${escape(message)}</p>` : ""}`}</article></section><p class="legend"><span class="legend-complete">✓</span> vorbereitet <span class="legend-missing">!</span> nachholen <span class="legend-today">•</span> heute</p>`;
+  return `<section class="calendar-layout workshop-layout"><nav class="door-grid" aria-label="Deine Werkstatt-Türchen">${doors}</nav><article class="door-detail workshop-detail"><div class="detail-top"><p class="eyebrow">Werkstatt · Türchen ${selectedWorkshopDay}</p><span class="status-pill">${isGift ? "✓ vorbereitet" : isOffline ? "✓ ganz in echt" : answer ? "✓ vorbereitet" : selectedWorkshopDay < today ? "! nachholen" : "✦ frei gestaltbar"}</span></div>${isGift ? renderGiftCopy() : isOffline ? renderOfflineWorkshopCopy(other(session.partner)) : `<p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${prompt.hint ? `<p class="prompt-hint">${escape(prompt.hint)}</p>` : ""}${renderEditor(prompt, answer)}${retractControl}${message ? `<p class="save-message">${escape(message)}</p>` : ""}`}</article></section><p class="legend"><span class="legend-complete">✓</span> vorbereitet <span class="legend-missing">!</span> nachholen <span class="legend-today">•</span> heute</p>`;
 }
 
 function renderGiftCopy() { return `<section class="gift-copy"><span aria-hidden="true">✦</span><h2>Lasst euch überraschen :)</h2><p>Dieses Türchen ist schon für euch vorbereitet.</p></section>`; }
+function renderOfflineWorkshopCopy(partner) { return `<section class="gift-copy offline-copy"><span aria-hidden="true">♥</span><p class="answer-kind">Ganz in echt</p><h2>Dieses Mal nichts schreiben.</h2><p>Flüstere ${name(partner)} stattdessen ganz in echt etwas ins Ohr.</p></section>`; }
+function renderOfflineCalendarCopy() { return `<section class="gift-copy offline-copy"><span aria-hidden="true">♥</span><p class="answer-kind">Ganz in echt</p><h2>Dieses Türchen wurde geflüstert.</h2><p>Die schönste Antwort bleibt heute zwischen euch beiden.</p></section>`; }
 
 function renderEditor(prompt, answer) {
   const old = answer || {};
@@ -342,7 +345,7 @@ function renderDrawingEditor(prompt, old) {
 function renderRankingEditor(prompt, old) {
   const savedOrder = rankingOrder(old.content || "");
   const orderedOptions = savedOrder.length === prompt.options.length ? savedOrder.map((id) => prompt.options.find((option) => option.id === id)).filter(Boolean) : prompt.options;
-  const noun = prompt.options[0]?.id === "sonnenblumen" ? "Blumen" : "Häuser";
+  const noun = prompt.options[0]?.id === "pastellstrauss" ? "Blumensträuße" : "Häuser";
   return `<form class="answer-form ranking-form" id="answer-form"><fieldset><legend>Die ${noun}</legend><div class="ranking-grid">${prompt.options.map((option) => `<article class="ranking-card"><img src="${escape(option.image)}" alt="${escape(option.label)}"><span>${escape(option.label)}</span></article>`).join("")}</div></fieldset><fieldset><legend>Deine mögliche Reihenfolge</legend><div class="ranking-list" id="ranking-list" aria-label="Ranking per Ziehen sortieren">${orderedOptions.map((option, index) => `<div class="ranking-row" data-ranking-id="${escape(option.id)}" tabindex="0"><span class="ranking-grip" aria-hidden="true">⠿</span><span class="ranking-place">${index + 1}</span><span class="ranking-label">${escape(option.label)}</span></div>`).join("")}</div></fieldset><p class="field-hint">Ziehe eine Zeile an den Griffpunkten nach oben oder unten. Oben ist Platz 1.</p><button class="primary-button">Ranking speichern</button></form>`;
 }
 
