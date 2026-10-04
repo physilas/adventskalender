@@ -17,10 +17,10 @@ export default {
     if (request.method === "OPTIONS") return new Response(null, { headers: corsHeaders(request) });
     try {
       const response = await route(request, env, new URL(request.url));
-      return withCors(response, request);
+      return await withCors(response, request);
     } catch (error) {
       console.error(error);
-      return withCors(json({ error: "Der Kalender ist gerade nicht erreichbar." }, 500), request);
+      return await withCors(json({ error: "Der Kalender ist gerade nicht erreichbar." }, 500), request);
     }
   },
 };
@@ -142,7 +142,8 @@ async function readMedia(request: Request, env: Env, path: string): Promise<Resp
   if (!answer || (answer.author !== session.partner && (answer.author !== otherPartner(session.partner) || answer.day > status.revealThrough))) return json({ error: "Nicht gefunden." }, 404);
   const media = await env.DB.prepare("SELECT mime_type, body FROM media WHERE key = ?").bind(key).first<{ mime_type: string; body: ArrayBuffer }>();
   if (!media) return json({ error: "Nicht gefunden." }, 404);
-  return new Response(media.body, { headers: { "content-type": media.mime_type, "cache-control": "private, max-age=3600" } });
+  const body = new Uint8Array(media.body.slice(0));
+  return new Response(body, { headers: { "content-type": media.mime_type, "cache-control": "private, max-age=3600" } });
 }
 
 async function setTestDay(request: Request, env: Env): Promise<Response> {
@@ -209,6 +210,14 @@ function isPartner(value: unknown): value is Partner { return value === "pia" ||
 function isAnswerKind(value: unknown): value is AnswerKind { return typeof value === "string" && ANSWER_KINDS.includes(value as AnswerKind); }
 function json(body: unknown, status = 200) { return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS }); }
 function corsHeaders(request: Request) { return { "access-control-allow-origin": request.headers.get("Origin") ?? "*", "access-control-allow-methods": "GET, POST, PUT, OPTIONS", "access-control-allow-headers": "Authorization, Content-Type", vary: "Origin" }; }
-function withCors(response: Response, request: Request) { const headers = new Headers(response.headers); for (const [key, value] of Object.entries(corsHeaders(request))) headers.set(key, value); return new Response(response.body, { status: response.status, headers }); }
+async function withCors(response: Response, request: Request) {
+  const headers = new Headers(response.headers);
+  for (const [key, value] of Object.entries(corsHeaders(request))) headers.set(key, value);
+  const type = headers.get("content-type") || "";
+  // Buffer binary media before attaching CORS headers. Re-wrapping a streamed D1
+  // BLOB can otherwise yield a response that downloads but cannot be decoded.
+  const body = type.startsWith("image/") || type.startsWith("audio/") ? await response.arrayBuffer() : response.body;
+  return new Response(body, { status: response.status, headers });
+}
 async function sha256(value: string) { const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)); return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join(""); }
 function randomToken() { const bytes = crypto.getRandomValues(new Uint8Array(32)); return btoa(String.fromCharCode(...bytes)).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", ""); }

@@ -569,7 +569,7 @@ async function hydrateMedia() {
         slot.innerHTML = slot.dataset.mediaKind === "audio" ? `<audio controls src="${localUrl}">Dein Browser kann diese Aufnahme nicht abspielen.</audio>` : `<img src="${localUrl}" alt="Eine persönliche Überraschung">`;
         return;
       }
-      const response = await fetch(`${API}/api/media/${encodeURIComponent(key)}`, { headers: { Authorization: `Bearer ${token()}` } });
+      const response = await fetch(`${API}/api/media/${encodeURIComponent(key)}?v=2`, { headers: { Authorization: `Bearer ${token()}` } });
       if (!response.ok) throw new Error();
       const bytes = await response.arrayBuffer();
       const mimeType = response.headers.get("content-type") || (slot.dataset.mediaKind === "audio" ? "audio/webm" : "image/jpeg");
