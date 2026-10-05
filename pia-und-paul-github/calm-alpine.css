@@ -346,7 +346,7 @@ body,
 .gift-preview:hover { border-color: #5d91a8; }
 .gift-preview img { display: block; width: 100%; max-height: 25rem; border-radius: .45rem; object-fit: contain; background: #fff; }
 .gift-preview span { padding: 0 .15rem; }
-.gift-download { justify-self: start; padding: .7rem .9rem; border-radius: .65rem; color: #fff; background: #245b7c; font-family: Arial, Helvetica, sans-serif; font-size: .9rem; font-weight: 700; text-decoration: none; }
+.gift-download { display: inline-flex; align-items: center; justify-self: start; padding: .7rem .9rem; border: 0; border-radius: .65rem; color: #fff; background: #245b7c; font-family: Arial, Helvetica, sans-serif; font-size: .9rem; font-weight: 700; line-height: 1.2; text-decoration: none; cursor: pointer; }
 .gift-download:hover { background: #173f59; }
 .retract-button {
   justify-self: start;

@@ -801,13 +801,11 @@ async function hydrateMedia() {
       const bytes = await response.arrayBuffer();
       const mimeType = response.headers.get("content-type") || (slot.dataset.mediaKind === "audio" ? "audio/webm" : "image/jpeg");
       const blob = new Blob([bytes], { type: mimeType });
-      const url = URL.createObjectURL(blob);
       if (slot.dataset.mediaKind === "audio") {
+        const url = URL.createObjectURL(blob);
         slot.innerHTML = `<audio controls src="${url}">Dein Browser kann diese Aufnahme nicht abspielen.</audio>`;
       } else {
-        slot.innerHTML = `<img src="${url}" alt="${escape(slot.dataset.mediaAlt || "Eine persönliche Überraschung")}">`;
-        const image = slot.querySelector("img");
-        image.addEventListener("error", () => renderImageDataUrl(image, blob, slot), { once: true });
+        renderImageDataUrl(blob, slot);
       }
     } catch { slot.textContent = "Dieser Beitrag konnte gerade nicht geladen werden."; }
   }));
@@ -840,11 +838,16 @@ function setupGiftDownloads() {
   }));
 }
 
-function renderImageDataUrl(image, blob, slot) {
+function renderImageDataUrl(blob, slot) {
   const reader = new FileReader();
-  reader.addEventListener("load", () => { image.src = String(reader.result); });
-  reader.addEventListener("error", () => { slot.textContent = "Dieses Foto konnte nicht dargestellt werden."; });
-  image.addEventListener("error", () => { slot.textContent = "Dieses Foto konnte nicht dargestellt werden."; }, { once: true });
+  reader.addEventListener("load", () => {
+    const image = new Image();
+    image.alt = slot.dataset.mediaAlt || "Eine persönliche Überraschung";
+    image.addEventListener("load", () => slot.replaceChildren(image), { once: true });
+    image.addEventListener("error", () => { slot.textContent = "Dieses Bild konnte nicht dargestellt werden."; }, { once: true });
+    image.src = String(reader.result);
+  });
+  reader.addEventListener("error", () => { slot.textContent = "Dieses Bild konnte nicht dargestellt werden."; });
   reader.readAsDataURL(blob);
 }
 
