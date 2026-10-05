@@ -786,7 +786,9 @@ function setupReceivedMaps() {
 }
 
 async function hydrateMedia() {
-  const slots = [...document.querySelectorAll("[data-media-key]")];
+  // Der PDF-Download trägt ebenfalls einen Schlüssel, ist aber kein Medien-Slot.
+  // Nur Elemente mit data-media-kind dürfen als Vorschau geladen werden.
+  const slots = [...document.querySelectorAll("[data-media-kind][data-media-key]")];
   await Promise.all(slots.map(async (slot) => {
     const key = slot.dataset.mediaKey;
     if (!key) return;
