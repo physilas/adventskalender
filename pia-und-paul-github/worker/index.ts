@@ -216,10 +216,15 @@ async function readMedia(request: Request, env: Env, path: string): Promise<Resp
   const calendar = await getCalendar(env);
   if (!session || !calendar) return json({ error: "Bitte melde dich zuerst an." }, 401);
   const key = decodeURIComponent(path.slice("/api/media/".length));
-  if (!/^media\/[a-f0-9-]+\.[a-z0-9]+$/i.test(key)) return json({ error: "Nicht gefunden." }, 404);
-  const answer = await env.DB.prepare("SELECT day, author FROM answers WHERE payload LIKE ? LIMIT 1").bind(`%${key}%`).first<{ day: number; author: Partner }>();
   const status = seasonStatus(calendar, env);
-  if (!answer || (answer.author !== session.partner && (answer.author !== otherPartner(session.partner) || answer.day > status.revealThrough))) return json({ error: "Nicht gefunden." }, 404);
+  const gift = /^gift\/(pia|paul)\/(vorschau\.png|rezept\.pdf)$/.exec(key);
+  if (gift) {
+    if (status.revealThrough < 24 || gift[1] !== session.partner) return json({ error: "Nicht gefunden." }, 404);
+  } else {
+    if (!/^media\/[a-f0-9-]+\.[a-z0-9]+$/i.test(key)) return json({ error: "Nicht gefunden." }, 404);
+    const answer = await env.DB.prepare("SELECT day, author FROM answers WHERE payload LIKE ? LIMIT 1").bind(`%${key}%`).first<{ day: number; author: Partner }>();
+    if (!answer || (answer.author !== session.partner && (answer.author !== otherPartner(session.partner) || answer.day > status.revealThrough))) return json({ error: "Nicht gefunden." }, 404);
+  }
   const media = await env.DB.prepare("SELECT mime_type, body FROM media WHERE key = ?").bind(key).first<{ mime_type: string; body: ArrayBuffer }>();
   if (!media) return json({ error: "Nicht gefunden." }, 404);
   const body = new Uint8Array(media.body.slice(0));

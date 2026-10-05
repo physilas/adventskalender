@@ -339,6 +339,15 @@ body,
 .gift-copy h2,
 .gift-copy p { margin: 0; }
 .gift-copy p { color: #5b7688; }
+.gift-recipe { display: grid; gap: .8rem; text-align: left; }
+.gift-recipe > span { text-align: center; }
+.gift-recipe .answer-kind { justify-self: start; margin: 0; }
+.gift-preview { display: grid; gap: .55rem; padding: .55rem; border: 1px solid #c8dce5; border-radius: .75rem; color: #245b7c; background: #f3f9fb; font-family: Arial, Helvetica, sans-serif; font-size: .82rem; font-weight: 700; text-decoration: none; }
+.gift-preview:hover { border-color: #5d91a8; }
+.gift-preview img { display: block; width: 100%; max-height: 25rem; border-radius: .45rem; object-fit: contain; background: #fff; }
+.gift-preview span { padding: 0 .15rem; }
+.gift-download { justify-self: start; padding: .7rem .9rem; border-radius: .65rem; color: #fff; background: #245b7c; font-family: Arial, Helvetica, sans-serif; font-size: .9rem; font-weight: 700; text-decoration: none; }
+.gift-download:hover { background: #173f59; }
 .retract-button {
   justify-self: start;
   margin-top: .35rem;

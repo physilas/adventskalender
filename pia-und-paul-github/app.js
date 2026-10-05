@@ -293,7 +293,7 @@ function renderCalendar() {
   const partner = other(session.partner);
   const prompt = prompts[partner][selectedCalendarDay - 1];
   const answer = partnerAnswers[selectedCalendarDay];
-  const detail = !unlocked ? `<div class="locked-copy"><h2>${lockedQuip(selectedCalendarDay, session.partner, state.seasonYear)}</h2><p>Dieses Türchen öffnet sich am ${selectedCalendarDay}. Dezember. Bis dahin bleibt die Überraschung ganz tapfer geheim.</p></div>` : prompt.kind === "gift" ? renderGiftCopy() : prompt.kind === "offline" ? renderOfflineCalendarCopy(prompt) : `<p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${answer ? renderAnswer(answer, prompt) : `<section class="waiting-copy"><span>◷</span><p>${name(partner)} hat dieses Türchen noch nicht gefüllt. Vielleicht kommt die Überraschung etwas später.</p></section>`}`;
+  const detail = !unlocked ? `<div class="locked-copy"><h2>${lockedQuip(selectedCalendarDay, session.partner, state.seasonYear)}</h2><p>Dieses Türchen öffnet sich am ${selectedCalendarDay}. Dezember. Bis dahin bleibt die Überraschung ganz tapfer geheim.</p></div>` : prompt.kind === "gift" ? renderGiftCopy(session.partner) : prompt.kind === "offline" ? renderOfflineCalendarCopy(prompt) : `<p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${answer ? renderAnswer(answer, prompt) : `<section class="waiting-copy"><span>◷</span><p>${name(partner)} hat dieses Türchen noch nicht gefüllt. Vielleicht kommt die Überraschung etwas später.</p></section>`}`;
   const modal = calendarDetailOpen ? `<section class="calendar-modal" role="dialog" aria-modal="true" aria-labelledby="door-title"><article class="door-detail"><button class="modal-close" type="button" aria-label="Türchen schließen">×</button><div class="detail-top"><p class="eyebrow">${unlocked ? `Türchen ${selectedCalendarDay}` : "Bis bald"}</p><span class="status-pill">${unlocked ? "♥ für dich" : "🔒 verschlossen"}</span></div><div id="door-title">${detail}</div></article></section>` : "";
   return `<section class="calendar-layout calendar-layout--calendar"><nav class="door-grid" aria-label="Deine Adventstürchen">${doors}</nav></section>${modal}<p class="legend calendar-legend"><span class="legend-new">♥</span> neue Überraschung <span class="legend-seen">✓</span> schon angesehen <span class="legend-missing">◷</span> noch offen</p>`;
 }
@@ -342,6 +342,7 @@ function bindCalendar() {
   }));
   document.querySelector(".modal-close")?.addEventListener("click", () => { calendarDetailOpen = false; renderApp(); });
   hydrateMedia();
+  setupGiftDownloads();
   setupReceivedMaps();
   setupRiddleGuess();
 }
@@ -365,7 +366,13 @@ function renderWorkshop(message = "") {
   return `<section class="calendar-layout workshop-layout"><nav class="door-grid" aria-label="Deine Werkstatt-Türchen">${doors}</nav><article class="door-detail workshop-detail"><div class="detail-top"><p class="eyebrow">Werkstatt · Türchen ${selectedWorkshopDay}</p><span class="status-pill">${isGift ? "✓ vorbereitet" : isOffline ? "✓ ganz in echt" : answer ? "✓ vorbereitet" : selectedWorkshopDay < today ? "! nachholen" : "✦ frei gestaltbar"}</span></div>${isGift ? renderGiftCopy() : isOffline ? renderOfflineWorkshopCopy(prompt, other(session.partner)) : `<p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${prompt.hint ? `<p class="prompt-hint">${escape(prompt.hint)}</p>` : ""}${renderEditor(prompt, answer)}${retractControl}${message ? `<p class="save-message">${escape(message)}</p>` : ""}`}</article></section><p class="legend"><span class="legend-complete">✓</span> vorbereitet <span class="legend-missing">!</span> nachholen <span class="legend-today">•</span> heute</p>`;
 }
 
-function renderGiftCopy() { return `<section class="gift-copy"><span aria-hidden="true">✦</span><h2>Lasst euch überraschen :)</h2><p>Dieses Türchen ist schon für euch vorbereitet.</p></section>`; }
+function renderGiftCopy(recipient) {
+  if (!recipient) return `<section class="gift-copy"><span aria-hidden="true">✦</span><h2>Lasst euch überraschen :)</h2><p>Dieses Türchen ist schon für euch vorbereitet.</p></section>`;
+  const recipe = recipient === "pia"
+    ? { title: "Sommer-Bolognese", previewKey: "gift/pia/vorschau.png", pdfKey: "gift/pia/rezept.pdf", alt: "Vorschau des Rezepts Sommer-Bolognese" }
+    : { title: "Sommer-Bolognese in Python", previewKey: "gift/paul/vorschau.png", pdfKey: "gift/paul/rezept.pdf", alt: "Vorschau des Python-Rezepts Sommer-Bolognese" };
+  return `<section class="gift-copy gift-recipe"><span aria-hidden="true">✦</span><p class="answer-kind">Euer Hochzeitsgeschenk</p><h2>${recipe.title}</h2><p>Liebe Pia, lieber Paul, heute gibt es ein kleines nachgeholtes Hochzeitsgeschenk von uns! Hier findest du eines unserer liebsten Rezepte für euer Rezeptbuch :) Gottes Segen für euer erstes Weihnachten als Ehepaar und viel Freude beim Nachkochen! Eure Janika und Silas</p><div class="gift-preview"><div class="gift-preview-media media-slot" data-media-kind="image" data-media-key="${recipe.previewKey}" data-media-alt="${recipe.alt}">Rezeptvorschau wird geladen …</div><span>Vorschau eures Rezepts</span></div><button class="gift-download" type="button" data-gift-download data-media-key="${recipe.pdfKey}" data-download-name="${recipient}-rezept.pdf">PDF herunterladen</button></section>`;
+}
 function renderOfflineWorkshopCopy(prompt, partner) { return `<section class="gift-copy offline-copy"><span aria-hidden="true">♥</span><p class="answer-kind">Ganz in echt</p><h2>${escape(prompt.prompt)}</h2><p>Dieses Mal nichts schreiben, sondern ${name(partner)} ganz in echt etwas ins Ohr flüstern.</p></section>`; }
 function renderOfflineCalendarCopy(prompt) { return `<section class="gift-copy offline-copy"><span aria-hidden="true">♥</span><p class="answer-kind">Ganz in echt</p><h2>${escape(prompt.prompt)}</h2><p>Die Antwort bleibt heute zwischen euch beiden.</p></section>`; }
 
@@ -786,7 +793,7 @@ async function hydrateMedia() {
     try {
       const localUrl = mediaPreviewUrls.get(key);
       if (localUrl) {
-        slot.innerHTML = slot.dataset.mediaKind === "audio" ? `<audio controls src="${localUrl}">Dein Browser kann diese Aufnahme nicht abspielen.</audio>` : `<img src="${localUrl}" alt="Eine persönliche Überraschung">`;
+        slot.innerHTML = slot.dataset.mediaKind === "audio" ? `<audio controls src="${localUrl}">Dein Browser kann diese Aufnahme nicht abspielen.</audio>` : `<img src="${localUrl}" alt="${escape(slot.dataset.mediaAlt || "Eine persönliche Überraschung")}">`;
         return;
       }
       const response = await fetch(`${API}/api/media/${encodeURIComponent(key)}?v=2`, { headers: { Authorization: `Bearer ${token()}` } });
@@ -798,11 +805,38 @@ async function hydrateMedia() {
       if (slot.dataset.mediaKind === "audio") {
         slot.innerHTML = `<audio controls src="${url}">Dein Browser kann diese Aufnahme nicht abspielen.</audio>`;
       } else {
-        slot.innerHTML = `<img src="${url}" alt="Eine persönliche Überraschung">`;
+        slot.innerHTML = `<img src="${url}" alt="${escape(slot.dataset.mediaAlt || "Eine persönliche Überraschung")}">`;
         const image = slot.querySelector("img");
         image.addEventListener("error", () => renderImageDataUrl(image, blob, slot), { once: true });
       }
     } catch { slot.textContent = "Dieser Beitrag konnte gerade nicht geladen werden."; }
+  }));
+}
+
+function setupGiftDownloads() {
+  document.querySelectorAll("[data-gift-download]").forEach((button) => button.addEventListener("click", async () => {
+    const key = button.dataset.mediaKey;
+    if (!key) return;
+    const original = button.textContent;
+    button.disabled = true;
+    button.textContent = "PDF wird vorbereitet …";
+    try {
+      const response = await fetch(`${API}/api/media/${encodeURIComponent(key)}`, { headers: { Authorization: `Bearer ${token()}` } });
+      if (!response.ok) throw new Error();
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = button.dataset.downloadName || "rezept.pdf";
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1_000);
+      button.textContent = "PDF heruntergeladen";
+    } catch {
+      button.textContent = "Download gerade nicht möglich";
+    } finally {
+      button.disabled = false;
+      setTimeout(() => { button.textContent = original; }, 2_500);
+    }
   }));
 }
 
