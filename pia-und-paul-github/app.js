@@ -359,10 +359,11 @@ function renderWorkshop(message = "") {
     const answer = ownAnswers[day];
     const doorPrompt = prompts[session.partner][day - 1];
     const isGiftDoor = doorPrompt.kind === "gift";
-    const isSpecialDoor = isGiftDoor || doorPrompt.kind === "offline";
     const isComplete = Boolean(answer) || (isGiftDoor && giftAcknowledged);
-    const stateClass = isComplete ? "complete" : isSpecialDoor ? "special" : day < today ? "overdue" : day === today ? "today" : "upcoming";
-    const marker = isComplete ? "✓" : day < today && !isSpecialDoor ? "!" : day === today && !isSpecialDoor ? "•" : "";
+    // Auch das flüsternde Türchen und die Überraschung folgen farblich exakt
+    // den normalen Werkstatt-Zuständen; sie bekommen keine Sonderfarbe.
+    const stateClass = isComplete ? "complete" : day < today ? "overdue" : day === today ? "today" : "upcoming";
+    const marker = isComplete ? "✓" : day < today ? "!" : day === today ? "•" : "";
     return `<button class="door workshop-door ${stateClass} ${selectedWorkshopDay === day ? "active" : ""}" data-workshop-day="${day}">${mountain(day)}<span>${day}</span><b aria-hidden="true">${marker}</b></button>`;
   }).join("");
   const prompt = prompts[session.partner][selectedWorkshopDay - 1];
