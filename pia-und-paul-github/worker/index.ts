@@ -16,10 +16,10 @@ const JSON_HEADERS = { "content-type": "application/json; charset=UTF-8" };
 const ANSWER_KINDS: AnswerKind[] = ["text", "choice", "choice-custom", "ranking", "image", "audio", "drawing", "drawing-riddle", "map", "link"];
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: { waitUntil(promise: Promise<unknown>): void }): Promise<Response> {
     if (request.method === "OPTIONS") return new Response(null, { headers: corsHeaders(request) });
     try {
-      const response = await route(request, env, new URL(request.url));
+      const response = await route(request, env, new URL(request.url), ctx);
       return await withCors(response, request);
     } catch (error) {
       console.error(error);
@@ -31,8 +31,22 @@ export default {
   },
 };
 
-async function route(request: Request, env: Env, url: URL): Promise<Response> {
+async function route(request: Request, env: Env, url: URL, ctx: { waitUntil(promise: Promise<unknown>): void }): Promise<Response> {
   const { pathname: path } = url;
+  if (path === "/api/reminder/test" && request.method === "POST" && isTestEnvironment(env)) {
+    const session = await getSession(request, env);
+    if (session?.partner !== "pia") return json({ error: "Bitte melde dich als Pia an." }, 403);
+    const reminder = await env.DB.prepare("SELECT enabled, endpoint FROM reminders WHERE partner = 'pia'").first<ReminderRow>();
+    if (!reminder?.enabled || !reminder.endpoint) return json({ error: "Aktiviere zuerst die Erinnerung auf diesem Gerät." }, 400);
+    ctx.waitUntil((async () => {
+      await new Promise(resolve => setTimeout(resolve, 10_000));
+      const current = await env.DB.prepare("SELECT enabled, endpoint FROM reminders WHERE partner = 'pia'").first<ReminderRow>();
+      if (!current?.enabled || current.endpoint !== reminder.endpoint) return;
+      const response = await sendPush(current.endpoint, env);
+      if (!response.ok) console.error("Test push rejected", response.status);
+    })());
+    return json({ queued: true, delaySeconds: 10 }, 202);
+  }
   if (path === "/api/calendar" && request.method === "GET") return readCalendar(request, env);
   if (path === "/api/setup" && request.method === "POST") return setup(request, env);
   if (path === "/api/session" && request.method === "POST") return signIn(request, env);

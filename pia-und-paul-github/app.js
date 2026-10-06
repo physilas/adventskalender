@@ -3,6 +3,14 @@ const TEST_MODE = window.ADVENT_DEVELOPER_TEST === true;
 const TOKEN_STORAGE_KEY = TEST_MODE ? "pia-paul-calendar-test-token" : "pia-paul-calendar-token";
 const GUIDE_STORAGE_KEY = TEST_MODE ? "pia-paul-calendar-test-guide-seen" : "pia-paul-calendar-guide-seen";
 const app = document.querySelector("#app");
+// Prevent page pinching only outside dialogs and interactive maps.
+const allowPinch = (target) => target instanceof Element && target.closest('[role="dialog"], .leaflet-container');
+for (const type of ["gesturestart", "gesturechange", "touchmove"]) {
+  document.addEventListener(type, (event) => {
+    if (document.querySelector(".app-shell") && !allowPinch(event.target) &&
+        (type !== "touchmove" || event.touches.length > 1)) event.preventDefault();
+  }, { passive: false });
+}
 const days = Array.from({ length: 24 }, (_, index) => index + 1);
 const question = (kind, prompt, options = [], hint = "") => ({ kind, prompt, options, hint });
 const piaHouseRanking = [
@@ -514,6 +522,22 @@ async function setupPiaReminder() {
       return;
     }
     setUi(setting.enabled, setting.time);
+    if (TEST_MODE) {
+      const testButton = document.createElement("button");
+      testButton.type = "button";
+      testButton.className = "primary-button";
+      testButton.textContent = "Testbenachrichtigung senden";
+      status.after(testButton);
+      testButton.addEventListener("click", async () => {
+        testButton.disabled = true;
+        try {
+          await enablePiaReminder(setting.publicKey, timeInput.value, setUi);
+          await api("/api/reminder/test", { method: "POST" });
+          status.textContent = "Test angefordert. Verlasse jetzt die App oder sperre dein Handy. Die Nachricht wird in etwa 10 Sekunden versendet.";
+        } catch (error) { status.textContent = error.message; }
+        finally { testButton.disabled = false; }
+      });
+    }
     radios.forEach((radio) => radio.addEventListener("change", async () => {
       try {
         if (radio.value === "enabled") await enablePiaReminder(setting.publicKey, timeInput.value, setUi);
@@ -532,9 +556,10 @@ async function setupPiaReminder() {
 
 async function enablePiaReminder(publicKey, time, setUi) {
   if (!window.Notification || !navigator.serviceWorker || !window.PushManager) throw new Error("Dieses Gerät unterstützt leider keine Web-Benachrichtigungen.");
-  const registration = await navigator.serviceWorker.register("service-worker.js");
   const permission = await Notification.requestPermission();
   if (permission !== "granted") throw new Error("Bitte erlaube Benachrichtigungen, damit die Erinnerung funktionieren kann.");
+  await navigator.serviceWorker.register("service-worker.js");
+  const registration = await navigator.serviceWorker.ready;
   let subscription = await registration.pushManager.getSubscription();
   if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64UrlToUint8Array(publicKey) });
   await api("/api/reminder", { method: "PUT", body: JSON.stringify({ enabled: true, time, endpoint: subscription.endpoint }) });

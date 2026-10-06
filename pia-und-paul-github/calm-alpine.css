@@ -23,6 +23,8 @@ body,
 
 #app:not(.loading) { display: block; width: 100%; min-width: 0; background: transparent; }
 .app-shell, .welcome-shell { width: 100%; min-width: 0; }
+.app-shell > :not([role="dialog"]) { touch-action: pan-x pan-y; }
+.app-shell > [role="dialog"] { touch-action: auto; }
 
 .welcome-shell {
   background-image:
