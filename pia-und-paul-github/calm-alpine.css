@@ -8,9 +8,17 @@
   --line: #6990a6;
 }
 
+html,
 body,
 .app-shell {
   background-color: #061523;
+  background-image:
+    linear-gradient(180deg, #03102166 0%, #061523a6 100%),
+    url("https://images.unsplash.com/photo-1593959734793-6e92d102da1e?auto=format&fit=crop&w=2400&q=85");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-attachment: fixed;
 }
 
 .welcome-shell {
@@ -509,34 +517,20 @@ body,
     overflow: hidden;
     overscroll-behavior: none;
   }
-  body:has(.app-shell) {
-    background: #061523;
-  }
-  /* Der feste Untergrund liegt bewusst auf dem Body: Er reicht damit auch
-     in die seitlichen Safe-Area-Ränder einer installierten iPhone-Web-App. */
-  body:has(.app-shell)::before {
-    position: fixed;
-    z-index: 0;
-    inset: 0;
-    display: block;
-    content: "";
+  .app-shell.calendar-shell,
+  .workshop-shell {
+    min-height: 100dvh;
+    height: 100dvh;
+    padding-bottom: max(.8rem, env(safe-area-inset-bottom));
+    /* Nicht transparent: Safari zeichnet die App-Safe-Area sonst anders
+       als den Kalender selbst. Das gleiche Bild liegt bewusst auf beiden. */
     background-image:
       linear-gradient(180deg, #03102166 0%, #061523a6 100%),
       url("https://images.unsplash.com/photo-1593959734793-6e92d102da1e?auto=format&fit=crop&w=2400&q=85");
     background-position: center;
     background-repeat: no-repeat;
     background-size: cover;
-  }
-  #app:has(.app-shell) {
-    position: relative;
-    z-index: 1;
-  }
-  .app-shell.calendar-shell,
-  .workshop-shell {
-    min-height: 100dvh;
-    height: 100dvh;
-    padding-bottom: max(.8rem, env(safe-area-inset-bottom));
-    background: transparent;
+    background-attachment: fixed;
   }
   .calendar-shell .topbar,
   .workshop-shell .topbar { padding-top: max(.85rem, calc(env(safe-area-inset-top) + .4rem)); }
