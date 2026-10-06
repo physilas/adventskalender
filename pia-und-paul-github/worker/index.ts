@@ -58,6 +58,7 @@ async function route(request: Request, env: Env, url: URL, ctx: { waitUntil(prom
   if (path === "/api/admin/password" && request.method === "PUT") return changeAccessCode(request, env);
   if (path === "/api/admin/settings" && request.method === "PUT") return saveAdminSettings(request, env);
   if (path === "/api/admin/content" && request.method === "DELETE") return resetContent(request, env);
+  if (path === "/api/admin/test/reset" && request.method === "DELETE" && isTestEnvironment(env)) return resetTestEnvironment(request, env);
   if (path === "/api/admin/gift" && request.method === "PUT") return replaceGiftAsset(request, env, url);
   if (path === "/api/admin/reminder" && request.method === "DELETE") return clearAdminReminder(request, env);
   if (path === "/api/answers" && request.method === "PUT") return saveAnswer(request, env);
@@ -129,6 +130,20 @@ async function resetContent(request: Request, env: Env): Promise<Response> {
     env.DB.prepare("DELETE FROM media WHERE key LIKE 'media/%'").run(), env.DB.prepare("DELETE FROM reminders").run(),
     env.DB.prepare("DELETE FROM sessions").run(),
     isTestEnvironment(env) ? env.DB.prepare("UPDATE calendar SET test_day = 1 WHERE id = 1").run() : Promise.resolve(),
+  ]);
+  return json({ reset: true });
+}
+
+async function resetTestEnvironment(request: Request, env: Env): Promise<Response> {
+  if (!await getAdminSession(request, env)) return json({ error: "Bitte melde dich mit deinem Rettungscode an." }, 401);
+  const body = await request.json() as { confirmation?: string };
+  if (body.confirmation !== "TESTVERSION ZURÜCKSETZEN") return json({ error: "Die zusätzliche Bestätigung stimmt nicht." }, 400);
+  const placeholderAccessCode = await sha256(crypto.randomUUID());
+  await Promise.all([
+    env.DB.prepare("DELETE FROM answers").run(), env.DB.prepare("DELETE FROM door_views").run(),
+    env.DB.prepare("DELETE FROM media").run(), env.DB.prepare("DELETE FROM reminders").run(),
+    env.DB.prepare("DELETE FROM sessions").run(),
+    env.DB.prepare("UPDATE calendar SET access_code_hash = ?, season_year = ?, test_day = 1, setup_complete = 0 WHERE id = 1").bind(placeholderAccessCode, currentYear()).run(),
   ]);
   return json({ reset: true });
 }
