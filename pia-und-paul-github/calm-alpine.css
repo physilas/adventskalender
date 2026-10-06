@@ -537,7 +537,51 @@ body,
 .received-map { border-color: #d2e2e8; background: #eaf3f6; }
 .calendar-legend { color: #e3f1f7; text-shadow: 0 1px 4px #020b14; }
 
+.admin-shell {
+  width: min(100%, 68rem);
+  min-height: 100svh;
+  margin: 0 auto;
+  padding: max(1.35rem, env(safe-area-inset-top)) clamp(1rem, 4vw, 2rem) max(2rem, env(safe-area-inset-bottom));
+  color: #eaf6fb;
+}
+.admin-shell .topbar { width: 100%; padding-top: 0; }
+.admin-heading { margin: clamp(1.75rem, 4vw, 3.25rem) 0 1.2rem; }
+.admin-heading h1 { margin: .2rem 0 .45rem; color: #fff; }
+.admin-heading p:last-child { max-width: 43rem; margin: 0; color: #c6dae5; }
+.admin-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .65rem; margin: 1.1rem 0; }
+.admin-summary article, .admin-card { border: 1px solid #9dc4d485; border-radius: .9rem; background: #071d31e8; box-shadow: 0 8px 24px #020b1459; }
+.admin-summary article { display: grid; gap: .18rem; padding: .85rem; text-align: center; }
+.admin-summary b { color: #fff; font-size: 1.35rem; }
+.admin-summary span { color: #b9d8e6; font: .78rem Arial, sans-serif; }
+.admin-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; }
+.admin-card { padding: 1.1rem; min-width: 0; }
+.admin-card h2, .admin-card h3 { margin: .1rem 0 .6rem; color: #fff; }
+.admin-card h2 { font-size: 1.25rem; }
+.admin-card h3 { font-size: 1rem; }
+.admin-card p { margin: 0 0 .85rem; color: #c6dae5; line-height: 1.45; }
+.admin-card form { display: grid; gap: .65rem; }
+.admin-card label { display: grid; gap: .3rem; color: #dcecf3; font: 700 .84rem Arial, sans-serif; }
+.admin-card input[type="file"] { max-width: 100%; color: #dcecf3; font: .78rem Arial, sans-serif; }
+.admin-card .answer-input { box-sizing: border-box; width: 100%; color: #16384f; background: #fff; }
+.admin-card select.answer-input { min-height: 2.55rem; }
+.admin-card .primary-button, .admin-card .quiet-button, .admin-card .danger-button { justify-self: start; }
+.admin-card .quiet-button { color: #173f59; background: #d9edf3; }
+.admin-gift-card { grid-column: span 2; }
+.admin-gifts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+.admin-gift-form { padding: .85rem; border: 1px solid #6990a6; border-radius: .7rem; background: #08273d; }
+.admin-danger { border-color: #bd8686; background: #321a27ed; }
+.admin-danger .eyebrow { color: #efb2b2; }
+.admin-danger code { color: #fff1f1; }
+.danger-button { padding: .75rem 1rem; border: 1px solid #efb2b2; border-radius: .65rem; color: #fff; background: #9e3d4f; font: 700 .9rem Arial, sans-serif; }
+.danger-button:hover { background: #b74c5d; }
+.admin-message { min-height: 1.2rem; margin: .45rem 0; color: #d6f0dc; font: 700 .9rem Arial, sans-serif; }
+.admin-message.error { color: #ffd0d0; }
+
 @media (max-width: 700px) {
+  .admin-shell { width: 100%; box-sizing: border-box; padding-inline: .85rem; }
+  .admin-heading { margin-top: 1.4rem; }
+  .admin-grid, .admin-gifts { grid-template-columns: 1fr; }
+  .admin-gift-card { grid-column: auto; }
   html:has(.app-shell),
   body:has(.app-shell),
   #app:has(.app-shell) {

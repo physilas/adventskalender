@@ -31,6 +31,18 @@ Eine kleine Adventskalender-Webapp für zwei Handys — ohne Nutzerkonto für Pi
 
 Nach dem ersten Push veröffentlicht GitHub die Web-App. Die erste Person richtet dort den Adventskalender und einen gemeinsamen Schlüssel ein; die zweite Person öffnet denselben Link, wählt ihren Namen und verwendet denselben Schlüssel.
 
+## Private Verwaltung
+
+Hänge für die private Verwaltungsseite `?admin=1` an die jeweilige Adresse an. Dort meldest du dich mit deinem **Rettungscode** an – nicht mit dem gemeinsamen Schlüssel von Pia und Paul. Die Verwaltungsseite ist in der normalen App nicht verlinkt und bietet getrennt für Test- und echte Version:
+
+- gemeinsamen Schlüssel zurücksetzen (alle normalen Sitzungen werden abgemeldet),
+- Adventsjahr und in der Testversion den simulierten Tag ändern,
+- Pia-Erinnerung zurücksetzen,
+- die beiden PDFs und PNG-Vorschauen für den 24. Dezember ersetzen,
+- persönliche Inhalte nach einer Checkbox-, Texteingabe- und Browser-Bestätigung zurücksetzen. Die 24.-Dezember-Dateien bleiben dabei erhalten.
+
+Admin-Sitzungen laufen nach zwölf Stunden ab. Der Rettungscode ist ausschließlich als Hash in der Datenbank gespeichert.
+
 ## Zwei Bereiche und Antwortformate
 
 - **Dein Adventskalender** zeigt die bis zum jeweiligen Datum freigeschalteten Überraschungen des Partners. Ein Herz markiert eine neue Überraschung, ein Haken ein bereits angesehenes Türchen und eine Sanduhr eine noch fehlende Antwort.

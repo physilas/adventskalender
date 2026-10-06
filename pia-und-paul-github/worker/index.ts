@@ -9,6 +9,7 @@ type Partner = "pia" | "paul";
 type AnswerKind = "text" | "choice" | "choice-custom" | "ranking" | "image" | "audio" | "drawing" | "drawing-riddle" | "map" | "link";
 type Calendar = { id: number; access_code_hash: string; recovery_code_hash?: string | null; setup_complete?: number; season_year: number; test_day?: number };
 type Session = { partner: Partner };
+type AdminSession = { expires_at: string };
 type AnswerRow = { day: number; content: string; kind?: string; payload?: string | null; updated_at: string };
 type ReminderRow = { enabled: number; reminder_time: string; endpoint: string | null; last_sent_year: number | null };
 
@@ -52,6 +53,13 @@ async function route(request: Request, env: Env, url: URL, ctx: { waitUntil(prom
   if (path === "/api/session" && request.method === "POST") return signIn(request, env);
   if (path === "/api/recovery/setup" && request.method === "POST") return configureRecovery(request, env);
   if (path === "/api/recovery" && request.method === "POST") return recoverAccess(request, env);
+  if (path === "/api/admin/session" && request.method === "POST") return signInAdmin(request, env);
+  if (path === "/api/admin" && request.method === "GET") return readAdmin(request, env);
+  if (path === "/api/admin/password" && request.method === "PUT") return changeAccessCode(request, env);
+  if (path === "/api/admin/settings" && request.method === "PUT") return saveAdminSettings(request, env);
+  if (path === "/api/admin/content" && request.method === "DELETE") return resetContent(request, env);
+  if (path === "/api/admin/gift" && request.method === "PUT") return replaceGiftAsset(request, env, url);
+  if (path === "/api/admin/reminder" && request.method === "DELETE") return clearAdminReminder(request, env);
   if (path === "/api/answers" && request.method === "PUT") return saveAnswer(request, env);
   if (path.startsWith("/api/answers/") && request.method === "DELETE") return retractAnswer(request, env, path);
   if (path === "/api/riddles/guess" && request.method === "POST") return checkRiddleGuess(request, env);
@@ -63,6 +71,87 @@ async function route(request: Request, env: Env, url: URL, ctx: { waitUntil(prom
   if (path.startsWith("/api/media/") && request.method === "GET") return readMedia(request, env, path);
   if (path === "/api/test/day" && request.method === "POST" && isTestEnvironment(env)) return setTestDay(request, env);
   return json({ error: "Nicht gefunden." }, 404);
+}
+
+async function signInAdmin(request: Request, env: Env): Promise<Response> {
+  const body = await request.json() as { recoveryCode?: string };
+  const calendar = await getCalendar(env);
+  const recoveryCode = body.recoveryCode?.trim() ?? "";
+  if (!calendar?.recovery_code_hash || await sha256(recoveryCode) !== calendar.recovery_code_hash) return json({ error: "Der Rettungscode stimmt nicht." }, 401);
+  return json(await issueAdminSession(env));
+}
+
+async function readAdmin(request: Request, env: Env): Promise<Response> {
+  if (!await getAdminSession(request, env)) return json({ error: "Bitte melde dich mit deinem Rettungscode an." }, 401);
+  const calendar = await getCalendar(env);
+  if (!calendar) return json({ error: "Der Adventskalender wurde noch nicht eingerichtet." }, 409);
+  const [answers, uploads, reminder] = await Promise.all([
+    env.DB.prepare("SELECT COUNT(*) AS count FROM answers").first<{ count: number }>(),
+    env.DB.prepare("SELECT COUNT(*) AS count FROM media WHERE key LIKE 'media/%'").first<{ count: number }>(),
+    env.DB.prepare("SELECT enabled, reminder_time FROM reminders WHERE partner = 'pia'").first<ReminderRow>(),
+  ]);
+  return json({
+    testMode: isTestEnvironment(env), seasonYear: calendar.season_year, testDay: calendar.test_day ?? 1,
+    answerCount: answers?.count ?? 0, uploadCount: uploads?.count ?? 0,
+    reminderEnabled: Boolean(reminder?.enabled), reminderTime: reminder?.reminder_time || "09:00",
+  });
+}
+
+async function changeAccessCode(request: Request, env: Env): Promise<Response> {
+  if (!await getAdminSession(request, env)) return json({ error: "Bitte melde dich mit deinem Rettungscode an." }, 401);
+  const body = await request.json() as { accessCode?: string };
+  const accessCode = body.accessCode?.trim() ?? "";
+  if (accessCode.length < 6 || accessCode.length > 80) return json({ error: "Der gemeinsame Schlüssel muss zwischen 6 und 80 Zeichen lang sein." }, 400);
+  await Promise.all([
+    env.DB.prepare("UPDATE calendar SET access_code_hash = ? WHERE id = 1").bind(await sha256(accessCode)).run(),
+    env.DB.prepare("DELETE FROM sessions").run(),
+  ]);
+  return json({ changed: true });
+}
+
+async function saveAdminSettings(request: Request, env: Env): Promise<Response> {
+  if (!await getAdminSession(request, env)) return json({ error: "Bitte melde dich mit deinem Rettungscode an." }, 401);
+  const body = await request.json() as { seasonYear?: number; testDay?: number };
+  if (!Number.isInteger(body.seasonYear) || !body.seasonYear || body.seasonYear < 2020 || body.seasonYear > 2100) return json({ error: "Bitte wähle ein gültiges Adventsjahr." }, 400);
+  if (isTestEnvironment(env)) {
+    if (!Number.isInteger(body.testDay) || !body.testDay || body.testDay < 1 || body.testDay > 25) return json({ error: "Bitte wähle einen Testtag zwischen 1 und 24 oder den Zeitraum danach." }, 400);
+    await env.DB.prepare("UPDATE calendar SET season_year = ?, test_day = ? WHERE id = 1").bind(body.seasonYear, body.testDay).run();
+  } else await env.DB.prepare("UPDATE calendar SET season_year = ? WHERE id = 1").bind(body.seasonYear).run();
+  return json({ saved: true });
+}
+
+async function resetContent(request: Request, env: Env): Promise<Response> {
+  if (!await getAdminSession(request, env)) return json({ error: "Bitte melde dich mit deinem Rettungscode an." }, 401);
+  const body = await request.json() as { confirmation?: string };
+  if (body.confirmation !== "INHALTE LÖSCHEN") return json({ error: "Die zusätzliche Bestätigung stimmt nicht." }, 400);
+  await Promise.all([
+    env.DB.prepare("DELETE FROM answers").run(), env.DB.prepare("DELETE FROM door_views").run(),
+    env.DB.prepare("DELETE FROM media WHERE key LIKE 'media/%'").run(), env.DB.prepare("DELETE FROM reminders").run(),
+    env.DB.prepare("DELETE FROM sessions").run(),
+    isTestEnvironment(env) ? env.DB.prepare("UPDATE calendar SET test_day = 1 WHERE id = 1").run() : Promise.resolve(),
+  ]);
+  return json({ reset: true });
+}
+
+async function replaceGiftAsset(request: Request, env: Env, url: URL): Promise<Response> {
+  if (!await getAdminSession(request, env)) return json({ error: "Bitte melde dich mit deinem Rettungscode an." }, 401);
+  const recipient = url.searchParams.get("recipient");
+  const asset = url.searchParams.get("asset");
+  if (!isPartner(recipient) || (asset !== "pdf" && asset !== "preview")) return json({ error: "Ungültige Geschenk-Datei." }, 400);
+  const contentType = (request.headers.get("content-type") || "").split(";")[0].toLowerCase();
+  const valid = asset === "pdf" ? contentType === "application/pdf" : contentType === "image/png";
+  if (!valid) return json({ error: asset === "pdf" ? "Bitte wähle eine PDF-Datei." : "Bitte wähle eine PNG-Vorschau." }, 400);
+  const body = await request.arrayBuffer();
+  if (!body.byteLength || body.byteLength > 5_000_000) return json({ error: "Die Datei muss kleiner als 5 MB sein." }, 400);
+  const key = `gift/${recipient}/${asset === "pdf" ? "rezept.pdf" : "vorschau.png"}`;
+  await env.DB.prepare("INSERT INTO media (key, owner, mime_type, body) VALUES (?, ?, ?, ?) ON CONFLICT(key) DO UPDATE SET owner = excluded.owner, mime_type = excluded.mime_type, body = excluded.body, created_at = CURRENT_TIMESTAMP").bind(key, recipient, contentType, body).run();
+  return json({ key, size: body.byteLength });
+}
+
+async function clearAdminReminder(request: Request, env: Env): Promise<Response> {
+  if (!await getAdminSession(request, env)) return json({ error: "Bitte melde dich mit deinem Rettungscode an." }, 401);
+  await env.DB.prepare("UPDATE reminders SET enabled = 0, endpoint = NULL, updated_at = CURRENT_TIMESTAMP WHERE partner = 'pia'").run();
+  return json({ cleared: true });
 }
 
 async function readReminder(request: Request, env: Env): Promise<Response> {
@@ -340,6 +429,19 @@ async function getSession(request: Request, env: Env): Promise<Session | null> {
   if (!token) return null;
   const row = await env.DB.prepare("SELECT partner FROM sessions WHERE token_hash = ? AND expires_at > CURRENT_TIMESTAMP").bind(await sha256(token)).first<Session>();
   return row && isPartner(row.partner) ? row : null;
+}
+
+async function getAdminSession(request: Request, env: Env): Promise<AdminSession | null> {
+  const token = request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
+  if (!token) return null;
+  return env.DB.prepare("SELECT expires_at FROM admin_sessions WHERE token_hash = ? AND expires_at > CURRENT_TIMESTAMP").bind(await sha256(token)).first<AdminSession>();
+}
+
+async function issueAdminSession(env: Env) {
+  const token = randomToken();
+  const expiresAt = new Date(Date.now() + 12 * 3_600_000).toISOString().replace("T", " ").replace("Z", "");
+  await env.DB.prepare("INSERT INTO admin_sessions (token_hash, expires_at) VALUES (?, ?)").bind(await sha256(token), expiresAt).run();
+  return { token, expiresAt };
 }
 
 async function issueSession(partner: Partner, env: Env) {

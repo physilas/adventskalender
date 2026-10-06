@@ -1,6 +1,7 @@
 const API = (window.ADVENT_API_URL || "").replace(/\/$/, "");
 const TEST_MODE = window.ADVENT_DEVELOPER_TEST === true;
 const TOKEN_STORAGE_KEY = TEST_MODE ? "pia-paul-calendar-test-token" : "pia-paul-calendar-token";
+const ADMIN_TOKEN_STORAGE_KEY = TEST_MODE ? "pia-paul-calendar-test-admin-token" : "pia-paul-calendar-admin-token";
 const GUIDE_STORAGE_KEY = TEST_MODE ? "pia-paul-calendar-test-guide-seen" : "pia-paul-calendar-guide-seen";
 const app = document.querySelector("#app");
 // Dialogs implement content-only zoom; Leaflet handles its own map gestures.
@@ -103,6 +104,7 @@ function other(partner) { return partner === "pia" ? "paul" : "pia"; }
 function name(partner) { return partner === "pia" ? "Pia" : "Paul"; }
 function escape(value = "") { return String(value).replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]); }
 function token() { return localStorage.getItem(TOKEN_STORAGE_KEY) || ""; }
+function adminToken() { return localStorage.getItem(ADMIN_TOKEN_STORAGE_KEY) || ""; }
 function giftAcknowledgementKey(partner) { return `${TEST_MODE ? "pia-paul-test" : "pia-paul"}-gift-acknowledged-${partner}`; }
 function hasAcknowledgedGift(partner) { return localStorage.getItem(giftAcknowledgementKey(partner)) === "yes"; }
 function shuffledDoorDays(partner, year) {
@@ -183,6 +185,16 @@ async function api(path, options = {}) {
   return payload;
 }
 
+async function adminApi(path, options = {}) {
+  const headers = new Headers(options.headers || {});
+  if (adminToken()) headers.set("Authorization", `Bearer ${adminToken()}`);
+  if (options.body && !headers.has("Content-Type") && !(options.body instanceof FormData)) headers.set("Content-Type", "application/json");
+  const response = await fetch(`${API}${path}`, { ...options, headers });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || "Das hat leider nicht geklappt.");
+  return payload;
+}
+
 async function load() {
   // The loading grid must not keep centering/shrinking the rendered app.
   app.classList.remove("loading");
@@ -190,6 +202,10 @@ async function load() {
   try {
     state = await api("/api/calendar");
     if (!state.session) localStorage.removeItem(TOKEN_STORAGE_KEY);
+    if (adminMode && adminToken() && state.recoveryConfigured) {
+      try { state.admin = await adminApi("/api/admin"); }
+      catch { localStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY); }
+    }
     const revealed = state.status?.revealThrough || 1;
     selectedCalendarDay = Math.min(Math.max(1, selectedCalendarDay), revealed || 1);
     render();
@@ -199,6 +215,7 @@ async function load() {
 }
 
 function render() {
+  if (adminMode && state.admin) { renderAdmin(); return; }
   if (!state.session) { renderAccess(); return; }
   renderApp();
 }
@@ -211,15 +228,13 @@ function renderGuide() {
 function renderAccess(message = "") {
   const setup = !state.configured;
   const adminSetup = adminMode && !state.recoveryConfigured;
-  const recovering = adminMode && state.configured && state.recoveryConfigured;
-  const awaitingPartnerSetup = adminMode && !state.configured && state.recoveryConfigured;
   const personSwitch = `<fieldset><legend>Ich bin …</legend><div class="person-switch"><button type="button" data-person="pia" class="${selectedPartner === "pia" ? "selected" : ""}">Pia</button><button type="button" data-person="paul" class="${selectedPartner === "paul" ? "selected" : ""}">Paul</button></div></fieldset>`;
   const standardForm = `${personSwitch}<label for="access-code">Gemeinsamer Schlüssel</label><div class="code-field">⌘ <input id="access-code" type="password" minlength="6" maxlength="80" autocomplete="current-password" placeholder="Mindestens 6 Zeichen" required></div><button class="primary-button">${setup ? "Adventskalender anlegen" : "Adventskalender öffnen"}</button>${!setup ? '<button class="quiet-button" type="button" id="recover-access">Schlüssel vergessen? Hilfe anfragen</button>' : ""}`;
-  const recoverySetupForm = `<label for="recovery-code">Dein privater Rettungscode</label><div class="code-field">✦ <input id="recovery-code" type="password" minlength="10" maxlength="80" autocomplete="new-password" placeholder="Mindestens 10 Zeichen" required></div><p class="field-hint">Bewahre ihn nur in deinem Passwortmanager auf. Er kann später einen neuen gemeinsamen Schlüssel setzen, ohne Inhalte zu löschen.</p><button class="primary-button">Rettungscode sichern</button>`;
-  const recoveryForm = `<label for="access-code">Neuer gemeinsamer Schlüssel</label><div class="code-field">⌘ <input id="access-code" type="password" minlength="6" maxlength="80" autocomplete="new-password" placeholder="Mindestens 6 Zeichen" required></div><label for="recovery-code">Dein Rettungscode</label><div class="code-field">✦ <input id="recovery-code" type="password" minlength="10" maxlength="80" autocomplete="current-password" placeholder="Dein privater Rettungscode" required></div><p class="field-hint">Der neue gemeinsame Schlüssel ersetzt den alten, eure Inhalte bleiben erhalten.</p><button class="primary-button">Neuen Schlüssel setzen</button><button class="quiet-button" type="button" id="cancel-recovery">Zurück zum Login</button>`;
-  const title = adminMode ? adminSetup ? "Rettungscode sichern" : recovering ? "Zugang wiederherstellen" : "Bereit für Pia & Paul" : setup ? "Euren Adventskalender einrichten" : "Willkommen zurück";
-  const intro = adminMode ? adminSetup ? "Lege deinen privaten Rettungscode fest. Pia und Paul sehen diese Seite nicht." : recovering ? "Setze mit deinem Rettungscode einen neuen gemeinsamen Schlüssel. Alle bisherigen Sitzungen werden dabei abgemeldet." : "Dein Rettungscode ist gesichert. Pia und Paul können ihren gemeinsamen Schlüssel jetzt unabhängig davon einrichten." : setup ? "Legt euren gemeinsamen Schlüssel fest und teilt ihn anschließend nur miteinander." : "Wähle deinen Namen und öffne euren gemeinsamen Adventskalender.";
-  const activeForm = adminMode ? adminSetup ? recoverySetupForm : recovering ? recoveryForm : "" : standardForm;
+  const recoverySetupForm = `<label for="recovery-code">Dein privater Rettungscode</label><div class="code-field">✦ <input id="recovery-code" type="password" minlength="10" maxlength="80" autocomplete="new-password" placeholder="Mindestens 10 Zeichen" required></div><p class="field-hint">Bewahre ihn nur in deinem Passwortmanager auf. Er öffnet später die private Verwaltung, ohne dass Pia und Paul davon erfahren.</p><button class="primary-button">Rettungscode sichern</button>`;
+  const adminLoginForm = `<label for="recovery-code">Dein privater Rettungscode</label><div class="code-field">✦ <input id="recovery-code" type="password" minlength="10" maxlength="80" autocomplete="current-password" placeholder="Dein privater Rettungscode" required></div><p class="field-hint">Nur damit öffnest du die nicht verlinkte Verwaltung für Schlüssel, Inhalte und das Geschenk am 24. Dezember.</p><button class="primary-button">Verwaltung öffnen</button>`;
+  const title = adminMode ? adminSetup ? "Rettungscode sichern" : "Private Verwaltung" : setup ? "Euren Adventskalender einrichten" : "Willkommen zurück";
+  const intro = adminMode ? adminSetup ? "Lege deinen privaten Rettungscode fest. Pia und Paul sehen diese Seite nicht." : "Melde dich mit deinem Rettungscode an. Dieser Bereich ist nur für dich gedacht." : setup ? "Legt euren gemeinsamen Schlüssel fest und teilt ihn anschließend nur miteinander." : "Wähle deinen Namen und öffne euren gemeinsamen Adventskalender.";
+  const activeForm = adminMode ? adminSetup ? recoverySetupForm : adminLoginForm : standardForm;
   const guideButton = !adminMode ? '<button class="quiet-button guide-button" type="button" id="open-guide">Anleitung</button>' : "";
   app.innerHTML = `<main class="welcome-shell"><section class="welcome-card"><div class="heart-mark">♥</div><p class="eyebrow">Pia & Paul</p><h1>${title}</h1><p class="intro">${intro}</p>${activeForm ? `<form class="access-form" id="access-form">${activeForm}${message ? `<p class="form-message">${escape(message)}</p>` : ""}</form>` : message ? `<p class="form-message">${escape(message)}</p>` : ""}${guideButton}</section></main>${renderGuide()}`;
   const closeGuide = () => {
@@ -232,11 +247,6 @@ function renderAccess(message = "") {
   document.querySelector("#guide-done")?.addEventListener("click", closeGuide);
   document.querySelectorAll("[data-person]").forEach((button) => button.addEventListener("click", () => { selectedPartner = button.dataset.person; renderAccess(); }));
   document.querySelector("#recover-access")?.addEventListener("click", () => renderAccess("Wendet euch an die Person, von der ihr den Adventskalender bekommen habt. Sie kann euch mit einem neuen gemeinsamen Schlüssel helfen."));
-  document.querySelector("#cancel-recovery")?.addEventListener("click", () => {
-    adminMode = false;
-    history.replaceState({}, "", window.location.pathname);
-    renderAccess();
-  });
   const form = document.querySelector("#access-form");
   setupPopupZoom();
   if (!form) return;
@@ -247,17 +257,13 @@ function renderAccess(message = "") {
     try {
       if (adminSetup) {
         await api("/api/recovery/setup", { method: "POST", body: JSON.stringify({ recoveryCode: document.querySelector("#recovery-code").value }) });
-        adminMode = false;
-        history.replaceState({}, "", window.location.pathname);
         await load();
         return;
       }
-      if (recovering) {
-        await api("/api/recovery", { method: "POST", body: JSON.stringify({ accessCode: document.querySelector("#access-code").value, recoveryCode: document.querySelector("#recovery-code").value }) });
-        localStorage.removeItem(TOKEN_STORAGE_KEY);
-        adminMode = false;
-        history.replaceState({}, "", window.location.pathname);
-        renderAccess("Neuer Schlüssel gesetzt. Pia und Paul können sich jetzt damit anmelden.");
+      if (adminMode) {
+        const result = await api("/api/admin/session", { method: "POST", body: JSON.stringify({ recoveryCode: document.querySelector("#recovery-code").value }) });
+        localStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, result.token);
+        await load();
         return;
       }
       const result = await api(state.configured ? "/api/session" : "/api/setup", { method: "POST", body: JSON.stringify({ partner: selectedPartner, accessCode: document.querySelector("#access-code").value }) });
@@ -265,6 +271,24 @@ function renderAccess(message = "") {
       await load();
     } catch (error) { renderAccess(error.message); }
   });
+}
+
+function adminNotice(message = "", isError = false) {
+  const element = document.querySelector("#admin-message");
+  if (element) { element.textContent = message; element.classList.toggle("error", isError); }
+}
+
+function renderAdmin() {
+  const admin = state.admin;
+  const environment = admin.testMode ? "Testversion" : "echte Version";
+  const giftInputs = ["pia", "paul"].map((recipient) => `<form class="admin-gift-form" data-recipient="${recipient}"><h3>${name(recipient)}</h3><label>Rezept-PDF<input name="pdf" type="file" accept="application/pdf"></label><label>Vorschau (PNG)<input name="preview" type="file" accept="image/png"></label><button class="quiet-button" type="submit">Dateien ersetzen</button></form>`).join("");
+  app.innerHTML = `<main class="admin-shell"><header class="topbar"><div class="brand"><span class="mini-heart">♥</span><span>Pia <i>&</i> Paul</span></div><button class="quiet-button" id="admin-signout">Verwaltung schließen</button></header><section class="admin-heading"><p class="eyebrow">Privater Bereich</p><h1>Verwaltung · ${environment}</h1><p>Nur mit deinem Rettungscode erreichbar. Änderungen gelten jeweils nur für diese ${environment}.</p></section><p class="admin-message" id="admin-message" aria-live="polite"></p><section class="admin-summary"><article><b>${admin.answerCount}</b><span>Antworten</span></article><article><b>${admin.uploadCount}</b><span>persönliche Uploads</span></article><article><b>${admin.reminderEnabled ? "an" : "aus"}</b><span>Pia-Erinnerung</span></article></section><div class="admin-grid"><section class="admin-card"><p class="eyebrow">Zugang</p><h2>Gemeinsamen Schlüssel ändern</h2><p>Die bisherigen Anmeldungen von Pia und Paul werden dabei abgemeldet. Ihre Inhalte bleiben erhalten.</p><form id="admin-password-form"><label for="admin-access-code">Neuer gemeinsamer Schlüssel</label><input id="admin-access-code" class="answer-input" type="password" minlength="6" maxlength="80" autocomplete="new-password" required><button class="primary-button">Schlüssel ersetzen</button></form></section><section class="admin-card"><p class="eyebrow">Adventskalender</p><h2>Wichtige Einstellungen</h2><form id="admin-settings-form"><label for="admin-season-year">Adventsjahr</label><input id="admin-season-year" class="answer-input" type="number" min="2020" max="2100" value="${admin.seasonYear}" required>${admin.testMode ? `<label for="admin-test-day">Testtag</label><select id="admin-test-day" class="answer-input">${days.map((day) => `<option value="${day}" ${admin.testDay === day ? "selected" : ""}>${day}. Dezember</option>`).join("")}<option value="25" ${admin.testDay === 25 ? "selected" : ""}>Nach dem 24. Dezember</option></select>` : ""}<button class="quiet-button">Einstellungen speichern</button></form></section><section class="admin-card admin-gift-card"><p class="eyebrow">24. Dezember</p><h2>Rezept-Dateien ersetzen</h2><p>PDF und Vorschau werden getrennt hochgeladen. Leer gelassene Felder bleiben unverändert.</p><div class="admin-gifts">${giftInputs}</div></section><section class="admin-card"><p class="eyebrow">Erinnerung</p><h2>Handy-Erinnerung zurücksetzen</h2><p>${admin.reminderEnabled ? `Aktiviert für Pia um ${escape(admin.reminderTime)} Uhr.` : "Derzeit nicht aktiv."}</p><button class="quiet-button" id="admin-clear-reminder" ${admin.reminderEnabled ? "" : "disabled"}>Erinnerung entfernen</button></section><section class="admin-card admin-danger"><p class="eyebrow">Achtung</p><h2>Persönliche Inhalte zurücksetzen</h2><p>Dies löscht unwiderruflich Antworten, persönliche Fotos, Zeichnungen, Sprachaufnahmen, Öffnungsstände und die Erinnerung. Die Rezept-Dateien für den 24. bleiben erhalten.</p><form id="admin-reset-content-form"><label><input id="admin-reset-check" type="checkbox" required> Ich möchte die persönlichen Inhalte wirklich löschen.</label><label for="admin-reset-phrase">Zur Bestätigung <code>INHALTE LÖSCHEN</code> eingeben</label><input id="admin-reset-phrase" class="answer-input" autocomplete="off" required><button class="danger-button">Inhalte unwiderruflich zurücksetzen</button></form></section></div></main>`;
+  document.querySelector("#admin-signout").addEventListener("click", () => { localStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY); state.admin = null; renderAccess(); });
+  document.querySelector("#admin-password-form").addEventListener("submit", async (event) => { event.preventDefault(); try { await adminApi("/api/admin/password", { method: "PUT", body: JSON.stringify({ accessCode: document.querySelector("#admin-access-code").value }) }); event.currentTarget.reset(); adminNotice("Der gemeinsame Schlüssel wurde ersetzt. Pia und Paul müssen sich erneut anmelden."); } catch (error) { adminNotice(error.message, true); } });
+  document.querySelector("#admin-settings-form").addEventListener("submit", async (event) => { event.preventDefault(); try { await adminApi("/api/admin/settings", { method: "PUT", body: JSON.stringify({ seasonYear: Number(document.querySelector("#admin-season-year").value), testDay: TEST_MODE ? Number(document.querySelector("#admin-test-day").value) : undefined }) }); await load(); } catch (error) { adminNotice(error.message, true); } });
+  document.querySelectorAll(".admin-gift-form").forEach((form) => form.addEventListener("submit", async (event) => { event.preventDefault(); const recipient = event.currentTarget.dataset.recipient; const pdf = event.currentTarget.querySelector('[name="pdf"]').files[0]; const preview = event.currentTarget.querySelector('[name="preview"]').files[0]; if (!pdf && !preview) { adminNotice("Wähle mindestens eine Datei aus.", true); return; } try { for (const [asset, file] of [["pdf", pdf], ["preview", preview]]) if (file) await adminApi(`/api/admin/gift?recipient=${recipient}&asset=${asset}`, { method: "PUT", body: file, headers: { "Content-Type": file.type } }); event.currentTarget.reset(); adminNotice(`Die Dateien für ${name(recipient)} wurden ersetzt.`); } catch (error) { adminNotice(error.message, true); } }));
+  document.querySelector("#admin-clear-reminder")?.addEventListener("click", async () => { if (!confirm("Die Handy-Erinnerung für Pia wirklich entfernen?")) return; try { await adminApi("/api/admin/reminder", { method: "DELETE" }); await load(); } catch (error) { adminNotice(error.message, true); } });
+  document.querySelector("#admin-reset-content-form").addEventListener("submit", async (event) => { event.preventDefault(); const phrase = document.querySelector("#admin-reset-phrase").value; if (!document.querySelector("#admin-reset-check").checked || phrase !== "INHALTE LÖSCHEN") { adminNotice("Bitte bestätige mit der Checkbox und dem exakten Satz.", true); return; } if (!confirm("Wirklich alle persönlichen Inhalte löschen? Dieser Schritt kann nicht rückgängig gemacht werden.")) return; try { await adminApi("/api/admin/content", { method: "DELETE", body: JSON.stringify({ confirmation: phrase }) }); await load(); } catch (error) { adminNotice(error.message, true); } });
 }
 
 function renderApp(message = "") {
