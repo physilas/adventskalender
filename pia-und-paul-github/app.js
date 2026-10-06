@@ -77,6 +77,7 @@ let selectedCalendarDay = 1;
 let selectedWorkshopDay = 1;
 let activeView = "calendar";
 let calendarDetailOpen = false;
+let workshopDetailOpen = false;
 let selectedPartner = "pia";
 let adminMode = new URLSearchParams(window.location.search).get("admin") === "1";
 let guideOpen = !adminMode && localStorage.getItem(GUIDE_STORAGE_KEY) !== "seen";
@@ -256,9 +257,9 @@ function renderApp(message = "") {
   const { session, status, seasonYear } = state;
   const heading = status.phase === "before" ? `Bereit für den 1. Dezember ${seasonYear}` : status.phase === "complete" ? "Alle Türchen sind offen" : `Dezember ${seasonYear}`;
   const developerControls = TEST_MODE ? renderDeveloperControls(status) : "";
-  app.innerHTML = `<main class="app-shell ${activeView === "calendar" ? "calendar-shell" : ""}"><header class="topbar"><div class="brand"><span class="mini-heart">♥</span><span>Pia <i>&</i> Paul</span></div><button class="quiet-button" id="signout">Abmelden</button></header><section class="hero-row"><div><p class="eyebrow">Adventskalender</p><h1>${heading}</h1></div><p class="hero-note">${activeView === "calendar" ? `Für dich: die kleinen Überraschungen von ${name(other(session.partner))}.` : `Deine Werkstatt: Bereite alle 24 Überraschungen für ${name(other(session.partner))} vor.`}</p></section><nav class="view-switch" aria-label="Bereich wählen"><button data-view="calendar" class="${activeView === "calendar" ? "selected" : ""}">♥ Dein Adventskalender</button><button data-view="workshop" class="${activeView === "workshop" ? "selected" : ""}">✦ Deine Werkstatt</button></nav>${developerControls}${activeView === "calendar" ? renderCalendar() : renderWorkshop(message)}</main>`;
+  app.innerHTML = `<main class="app-shell ${activeView === "calendar" ? "calendar-shell" : "workshop-shell"}"><header class="topbar"><div class="brand"><span class="mini-heart">♥</span><span>Pia <i>&</i> Paul</span></div><button class="quiet-button" id="signout">Abmelden</button></header><section class="hero-row"><div><p class="eyebrow">Adventskalender</p><h1>${heading}</h1></div><p class="hero-note">${activeView === "calendar" ? `Für dich: die kleinen Überraschungen von ${name(other(session.partner))}.` : `Deine Werkstatt: Bereite alle 24 Überraschungen für ${name(other(session.partner))} vor.`}</p></section><nav class="view-switch" aria-label="Bereich wählen"><button data-view="calendar" class="${activeView === "calendar" ? "selected" : ""}">♥ Dein Adventskalender</button><button data-view="workshop" class="${activeView === "workshop" ? "selected" : ""}">✦ Deine Werkstatt</button></nav>${developerControls}${activeView === "calendar" ? renderCalendar() : renderWorkshop(message)}</main>`;
   document.querySelector("#signout").addEventListener("click", () => { localStorage.removeItem(TOKEN_STORAGE_KEY); state.session = null; render(); });
-  document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => { activeView = button.dataset.view; calendarDetailOpen = false; renderApp(); }));
+  document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => { activeView = button.dataset.view; calendarDetailOpen = false; workshopDetailOpen = false; renderApp(); }));
   bindDeveloperControls();
   if (activeView === "calendar") bindCalendar(); else bindWorkshop();
 }
@@ -300,7 +301,7 @@ function renderCalendar() {
 
 function renderAnswer(answer, prompt) {
   if (answer.kind === "ranking" && prompt?.options) return renderRankingAnswer(answer, prompt);
-  if (answer.kind === "drawing-riddle") return `<section class="received-note media-answer"><p class="note-label">Ein Zeichenrätsel für dich</p><div class="media-slot image-slot" data-media-kind="image" data-media-key="${escape(mediaKey(answer))}">Wird geladen …</div><form class="riddle-guess" id="riddle-guess-form"><label for="riddle-guess">Was hat ${name(other(state.session.partner))} gezeichnet?</label><div><input id="riddle-guess" class="answer-input" maxlength="240" placeholder="Dein Tipp" required><button class="quiet-button">Tipp prüfen</button></div><p id="riddle-feedback" class="field-hint" aria-live="polite"></p></form></section>`;
+  if (answer.kind === "drawing-riddle") return `<section class="received-note media-answer"><p class="note-label">Ein Zeichenrätsel für dich</p><div class="media-slot image-slot" data-media-kind="image" data-media-key="${escape(mediaKey(answer))}">Wird geladen …</div><p class="riddle-solution"><strong>Die Lösung:</strong> ${escape(answer.payload?.solution || "wird noch verraten")}</p></section>`;
   if (answer.kind === "image" || answer.kind === "drawing") return `<section class="received-note media-answer"><p class="note-label">${answer.kind === "drawing" ? "Eine Zeichnung für dich" : "Ein Foto für dich"}</p><div class="media-slot image-slot" data-media-kind="image" data-media-key="${escape(mediaKey(answer))}">Wird geladen …</div></section>`;
   if (answer.kind === "audio") return `<section class="received-note media-answer"><p class="note-label">Eine Sprachnachricht für dich</p><div class="media-slot audio-slot" data-media-kind="audio" data-media-key="${escape(mediaKey(answer))}">Wird geladen …</div></section>`;
   if (answer.kind === "map") {
@@ -363,7 +364,9 @@ function renderWorkshop(message = "") {
   const isOffline = prompt.kind === "offline";
   const canRetract = state.withdrawableDays?.includes(selectedWorkshopDay);
   const retractControl = answer ? canRetract ? `<button type="button" class="retract-button" id="retract-answer">Antwort zurückziehen</button>` : `<p class="retract-note">Diese Antwort wurde schon geöffnet und bleibt deshalb als Überraschung erhalten.</p>` : "";
-  return `<section class="calendar-layout workshop-layout"><nav class="door-grid" aria-label="Deine Werkstatt-Türchen">${doors}</nav><article class="door-detail workshop-detail"><div class="detail-top"><p class="eyebrow">Werkstatt · Türchen ${selectedWorkshopDay}</p><span class="status-pill">${isGift ? "✓ vorbereitet" : isOffline ? "✓ ganz in echt" : answer ? "✓ vorbereitet" : selectedWorkshopDay < today ? "! nachholen" : "✦ frei gestaltbar"}</span></div>${isGift ? renderGiftCopy() : isOffline ? renderOfflineWorkshopCopy(prompt, other(session.partner)) : `<p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${prompt.hint ? `<p class="prompt-hint">${escape(prompt.hint)}</p>` : ""}${renderEditor(prompt, answer)}${retractControl}${message ? `<p class="save-message">${escape(message)}</p>` : ""}`}</article></section><p class="legend"><span class="legend-complete">✓</span> vorbereitet <span class="legend-missing">!</span> nachholen <span class="legend-today">•</span> heute</p>`;
+  const detail = `<article class="door-detail workshop-detail"><button class="modal-close" type="button" aria-label="Werkstatt-Türchen schließen">×</button><div class="detail-top"><p class="eyebrow">Werkstatt · Türchen ${selectedWorkshopDay}</p><span class="status-pill">${isGift ? "✓ vorbereitet" : isOffline ? "✓ ganz in echt" : answer ? "✓ vorbereitet" : selectedWorkshopDay < today ? "! nachholen" : "✦ frei gestaltbar"}</span></div>${isGift ? renderGiftCopy() : isOffline ? renderOfflineWorkshopCopy(prompt, other(session.partner)) : `<p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${prompt.hint ? `<p class="prompt-hint">${escape(prompt.hint)}</p>` : ""}${renderEditor(prompt, answer)}${retractControl}${message ? `<p class="save-message">${escape(message)}</p>` : ""}`}</article>`;
+  const modal = workshopDetailOpen ? `<section class="workshop-modal" role="dialog" aria-modal="true" aria-label="Werkstatt-Türchen ${selectedWorkshopDay}">${detail}</section>` : "";
+  return `<section class="calendar-layout workshop-layout"><nav class="door-grid" aria-label="Deine Werkstatt-Türchen">${doors}</nav></section>${modal}<p class="legend workshop-legend"><span class="legend-complete">✓</span> vorbereitet <span class="legend-missing">!</span> nachholen <span class="legend-today">•</span> heute</p>`;
 }
 
 function renderGiftCopy(recipient) {
@@ -416,7 +419,8 @@ function renderMediaEditor(kind, old, label, hint) {
 }
 
 function bindWorkshop() {
-  document.querySelectorAll("[data-workshop-day]").forEach((button) => button.addEventListener("click", () => { selectedWorkshopDay = Number(button.dataset.workshopDay); renderApp(); }));
+  document.querySelectorAll("[data-workshop-day]").forEach((button) => button.addEventListener("click", () => { selectedWorkshopDay = Number(button.dataset.workshopDay); workshopDetailOpen = true; renderApp(); }));
+  if (!workshopDetailOpen) return;
   const prompt = prompts[state.session.partner][selectedWorkshopDay - 1];
   const answer = state.ownAnswers[selectedWorkshopDay];
   const textarea = document.querySelector("#answer");
@@ -458,6 +462,7 @@ function bindWorkshop() {
       renderApp(error.message);
     }
   });
+  document.querySelector(".workshop-modal .modal-close")?.addEventListener("click", () => { workshopDetailOpen = false; renderApp(); });
   hydrateMedia();
 }
 

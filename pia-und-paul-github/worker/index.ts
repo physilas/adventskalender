@@ -64,7 +64,7 @@ async function readCalendar(request: Request, env: Env): Promise<Response> {
     seasonYear: calendar.season_year,
     status,
     ownAnswers: Object.fromEntries(own.results.map((row) => [row.day, answerFromRow(row)])),
-    partnerAnswers: Object.fromEntries(received.results.map((row) => [row.day, answerFromRow(row, true)])),
+    partnerAnswers: Object.fromEntries(received.results.map((row) => [row.day, answerFromRow(row)])),
     seenDays: views.results.map((row) => row.day),
     withdrawableDays: own.results.map((row) => row.day).filter((day) => !openedByPartner.has(day)),
   });
