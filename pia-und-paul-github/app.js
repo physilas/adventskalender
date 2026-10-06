@@ -413,7 +413,7 @@ function renderRankingEditor(prompt, old) {
   const savedOrder = rankingOrder(old.content || "");
   const orderedOptions = savedOrder.length === prompt.options.length ? savedOrder.map((id) => prompt.options.find((option) => option.id === id)).filter(Boolean) : prompt.options;
   const noun = prompt.options[0]?.id === "apricot" ? "Blumensträuße" : "Häuser";
-  return `<form class="answer-form ranking-form" id="answer-form"><fieldset><legend>Die ${noun}</legend><div class="ranking-grid" id="ranking-grid">${orderedOptions.map((option, index) => `<article class="ranking-card" data-ranking-id="${escape(option.id)}"><span class="ranking-card-place">${index + 1}</span><img src="${escape(option.image)}" alt="${escape(option.label)}"><span>${escape(option.label)}</span></article>`).join("")}</div></fieldset><fieldset><legend>Deine mögliche Reihenfolge</legend><div class="ranking-list" id="ranking-list" aria-label="Ranking per Ziehen sortieren">${orderedOptions.map((option, index) => `<div class="ranking-row" data-ranking-id="${escape(option.id)}" tabindex="0"><span class="ranking-grip" aria-hidden="true">⠿</span><span class="ranking-place">${index + 1}</span><span class="ranking-label">${escape(option.label)}</span></div>`).join("")}</div></fieldset><p class="field-hint">Ziehe eine Zeile an den Griffpunkten nach oben oder unten. Die Bildkacheln sortieren sich direkt mit.</p><button class="primary-button">Ranking speichern</button></form>`;
+  return `<form class="answer-form ranking-form" id="answer-form"><fieldset><legend>Die ${noun}</legend><div class="ranking-grid">${prompt.options.map((option) => `<article class="ranking-card" data-option-id="${escape(option.id)}"><img src="${escape(option.image)}" alt="${escape(option.label)}"><span>${escape(option.label)}</span></article>`).join("")}</div></fieldset><fieldset><legend>Deine mögliche Reihenfolge</legend><div class="ranking-list" id="ranking-list" aria-label="Ranking per Ziehen sortieren">${orderedOptions.map((option, index) => `<div class="ranking-row" data-ranking-id="${escape(option.id)}" tabindex="0"><span class="ranking-grip" aria-hidden="true">⠿</span><span class="ranking-place">${index + 1}</span><span class="ranking-label">${escape(option.label)}</span></div>`).join("")}</div></fieldset><p class="field-hint">Ziehe die Ranglisten-Kacheln an den Griffpunkten nach oben oder unten. Die Fotos oben bleiben dabei unverändert.</p><button class="primary-button">Ranking speichern</button></form>`;
 }
 
 function renderMediaEditor(kind, old, label, hint) {
@@ -559,26 +559,21 @@ function setupRiddleGuess() {
 
 function setupRankingSort() {
   const list = document.querySelector("#ranking-list");
-  const grid = document.querySelector("#ranking-grid");
   if (!list) return;
   let dragged = null;
   const updatePlaces = () => list.querySelectorAll(".ranking-row").forEach((row, index) => row.querySelector(".ranking-place").textContent = String(index + 1));
-  const syncTiles = () => {
-    if (!grid) return;
-    const firstPositions = new Map([...grid.children].map((tile) => [tile, tile.getBoundingClientRect()]));
-    list.querySelectorAll(".ranking-row").forEach((row, index) => {
-      const tile = grid.querySelector(`[data-ranking-id="${CSS.escape(row.dataset.rankingId)}"]`);
-      if (!tile) return;
-      grid.append(tile);
-      tile.querySelector(".ranking-card-place").textContent = String(index + 1);
-    });
-    [...grid.children].forEach((tile) => {
-      const first = firstPositions.get(tile);
-      const last = tile.getBoundingClientRect();
+  const moveRow = (move) => {
+    const firstPositions = new Map([...list.children].map((row) => [row, row.getBoundingClientRect()]));
+    move();
+    updatePlaces();
+    [...list.children].forEach((row) => {
+      const first = firstPositions.get(row);
+      const last = row.getBoundingClientRect();
       if (!first) return;
-      const deltaX = first.left - last.left;
       const deltaY = first.top - last.top;
-      if (deltaX || deltaY) tile.animate([{ transform: `translate(${deltaX}px, ${deltaY}px)` }, { transform: "translate(0, 0)" }], { duration: 260, easing: "cubic-bezier(.2,.8,.2,1)" });
+      if (!deltaY) return;
+      row.getAnimations().forEach((animation) => animation.cancel());
+      row.animate([{ transform: `translateY(${deltaY}px)` }, { transform: "translateY(0)" }], { duration: 260, easing: "cubic-bezier(.2,.8,.2,1)" });
     });
   };
   const finish = () => {
@@ -600,9 +595,7 @@ function setupRankingSort() {
     const target = document.elementFromPoint(event.clientX, event.clientY)?.closest(".ranking-row");
     if (!target || target === dragged || !list.contains(target)) return;
     const bounds = target.getBoundingClientRect();
-    list.insertBefore(dragged, event.clientY < bounds.top + bounds.height / 2 ? target : target.nextSibling);
-    updatePlaces();
-    syncTiles();
+    moveRow(() => list.insertBefore(dragged, event.clientY < bounds.top + bounds.height / 2 ? target : target.nextSibling));
   });
   list.addEventListener("pointerup", finish);
   list.addEventListener("pointercancel", finish);
