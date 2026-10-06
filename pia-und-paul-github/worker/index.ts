@@ -10,6 +10,9 @@ type AnswerKind = "text" | "choice" | "choice-custom" | "ranking" | "image" | "a
 type Calendar = { id: number; access_code_hash: string; recovery_code_hash?: string | null; setup_complete?: number; season_year: number; test_day?: number };
 type Session = { partner: Partner };
 type AdminSession = { expires_at: string };
+type BackupAnswer = { day: number; author: Partner; content: string; kind: AnswerKind; payload: string | null; updated_at: string };
+type BackupMedia = { key: string; owner: Partner; mime_type: string; body: ArrayBuffer };
+type BackupReminder = { partner: Partner; enabled: number; reminder_time: string; endpoint: string | null; last_sent_year: number | null };
 type AnswerRow = { day: number; content: string; kind?: string; payload?: string | null; updated_at: string };
 type ReminderRow = { enabled: number; reminder_time: string; endpoint: string | null; last_sent_year: number | null };
 
@@ -28,7 +31,7 @@ export default {
     }
   },
   async scheduled(_event: unknown, env: Env, ctx: { waitUntil(promise: Promise<unknown>): void }) {
-    ctx.waitUntil(sendDueReminders(env));
+    ctx.waitUntil(Promise.all([sendDueReminders(env), createDailyBackup(env)]));
   },
 };
 
@@ -58,9 +61,14 @@ async function route(request: Request, env: Env, url: URL, ctx: { waitUntil(prom
   if (path === "/api/admin/password" && request.method === "PUT") return changeAccessCode(request, env);
   if (path === "/api/admin/settings" && request.method === "PUT") return saveAdminSettings(request, env);
   if (path === "/api/admin/content" && request.method === "DELETE") return resetContent(request, env);
-  if (path === "/api/admin/test/reset" && request.method === "DELETE" && isTestEnvironment(env)) return resetTestEnvironment(request, env);
   if (path === "/api/admin/gift" && request.method === "PUT") return replaceGiftAsset(request, env, url);
   if (path === "/api/admin/reminder" && request.method === "DELETE") return clearAdminReminder(request, env);
+  if (path === "/api/admin/backup" && request.method === "GET") return exportBackup(request, env);
+  if (path === "/api/admin/backup" && request.method === "PUT") return restoreBackup(request, env);
+  if (path === "/api/admin/backups" && request.method === "GET") return listBackups(request, env);
+  if (path === "/api/admin/backups" && request.method === "POST") return createAdminBackup(request, env);
+  if (/^\/api\/admin\/backups\/\d+$/.test(path) && request.method === "GET") return downloadStoredBackup(request, env, path);
+  if (/^\/api\/admin\/backups\/\d+\/restore$/.test(path) && request.method === "POST") return restoreStoredBackup(request, env, path);
   if (path === "/api/answers" && request.method === "PUT") return saveAnswer(request, env);
   if (path.startsWith("/api/answers/") && request.method === "DELETE") return retractAnswer(request, env, path);
   if (path === "/api/riddles/guess" && request.method === "POST") return checkRiddleGuess(request, env);
@@ -134,20 +142,6 @@ async function resetContent(request: Request, env: Env): Promise<Response> {
   return json({ reset: true });
 }
 
-async function resetTestEnvironment(request: Request, env: Env): Promise<Response> {
-  if (!await getAdminSession(request, env)) return json({ error: "Bitte melde dich mit deinem Rettungscode an." }, 401);
-  const body = await request.json() as { confirmation?: string };
-  if (body.confirmation !== "TESTVERSION ZURÜCKSETZEN") return json({ error: "Die zusätzliche Bestätigung stimmt nicht." }, 400);
-  const placeholderAccessCode = await sha256(crypto.randomUUID());
-  await Promise.all([
-    env.DB.prepare("DELETE FROM answers").run(), env.DB.prepare("DELETE FROM door_views").run(),
-    env.DB.prepare("DELETE FROM media").run(), env.DB.prepare("DELETE FROM reminders").run(),
-    env.DB.prepare("DELETE FROM sessions").run(),
-    env.DB.prepare("UPDATE calendar SET access_code_hash = ?, season_year = ?, test_day = 1, setup_complete = 0 WHERE id = 1").bind(placeholderAccessCode, currentYear()).run(),
-  ]);
-  return json({ reset: true });
-}
-
 async function replaceGiftAsset(request: Request, env: Env, url: URL): Promise<Response> {
   if (!await getAdminSession(request, env)) return json({ error: "Bitte melde dich mit deinem Rettungscode an." }, 401);
   const recipient = url.searchParams.get("recipient");
@@ -168,6 +162,137 @@ async function clearAdminReminder(request: Request, env: Env): Promise<Response>
   await env.DB.prepare("UPDATE reminders SET enabled = 0, endpoint = NULL, updated_at = CURRENT_TIMESTAMP WHERE partner = 'pia'").run();
   return json({ cleared: true });
 }
+
+async function backupSnapshot(env: Env) {
+  const calendar = await getCalendar(env);
+  if (!calendar) return null;
+  const [answers, views, reminders, media] = await Promise.all([
+    env.DB.prepare("SELECT day, author, content, kind, payload, updated_at FROM answers ORDER BY day, author").all<BackupAnswer>(),
+    env.DB.prepare("SELECT day, viewer, viewed_at FROM door_views ORDER BY day, viewer").all<{ day: number; viewer: Partner; viewed_at: string }>(),
+    env.DB.prepare("SELECT partner, enabled, reminder_time, endpoint, last_sent_year FROM reminders ORDER BY partner").all<BackupReminder>(),
+    env.DB.prepare("SELECT key, owner, mime_type, body FROM media ORDER BY key").all<BackupMedia>(),
+  ]);
+  return {
+    content: {
+      format: "pia-und-paul-backup", version: 1, exportedAt: new Date().toISOString(), testMode: isTestEnvironment(env),
+      calendar: { seasonYear: calendar.season_year, testDay: calendar.test_day ?? 1 },
+      answers: answers.results, doorViews: views.results, reminders: reminders.results,
+    }, media: media.results,
+  };
+}
+
+async function createDailyBackup(env: Env) {
+  const snapshot = await backupSnapshot(env);
+  if (!snapshot) return null;
+  const date = berlinDateKey();
+  const insert = await env.DB.prepare("INSERT INTO backups (backup_date, content_json) VALUES (?, ?) ON CONFLICT(backup_date) DO NOTHING").bind(date, JSON.stringify(snapshot.content)).run();
+  if (!insert.meta.changes) return env.DB.prepare("SELECT id, backup_date, created_at FROM backups WHERE backup_date = ?").bind(date).first<{ id: number; backup_date: string; created_at: string }>();
+  const stored = await env.DB.prepare("SELECT id, backup_date, created_at FROM backups WHERE backup_date = ?").bind(date).first<{ id: number; backup_date: string; created_at: string }>();
+  if (!stored) return null;
+  await Promise.all(snapshot.media.map((item) => env.DB.prepare("INSERT INTO backup_media (backup_id, key, owner, mime_type, body) VALUES (?, ?, ?, ?, ?)").bind(stored.id, item.key, item.owner, item.mime_type, item.body).run()));
+  await env.DB.prepare("DELETE FROM backup_media WHERE backup_id IN (SELECT id FROM backups ORDER BY backup_date DESC LIMIT -1 OFFSET 30)").run();
+  await env.DB.prepare("DELETE FROM backups WHERE id NOT IN (SELECT id FROM backups ORDER BY backup_date DESC LIMIT 30)").run();
+  return stored;
+}
+
+async function exportBackup(request: Request, env: Env): Promise<Response> {
+  if (!await getAdminSession(request, env)) return json({ error: "Bitte melde dich mit deinem Rettungscode an." }, 401);
+  const snapshot = await backupSnapshot(env);
+  if (!snapshot) return json({ error: "Der Adventskalender wurde noch nicht eingerichtet." }, 409);
+  return json(serialiseBackup(snapshot.content, snapshot.media));
+}
+
+async function listBackups(request: Request, env: Env): Promise<Response> {
+  if (!await getAdminSession(request, env)) return json({ error: "Bitte melde dich mit deinem Rettungscode an." }, 401);
+  const rows = await env.DB.prepare("SELECT b.id, b.backup_date, b.created_at, COUNT(m.id) AS media_count FROM backups b LEFT JOIN backup_media m ON m.backup_id = b.id GROUP BY b.id ORDER BY b.backup_date DESC").all<{ id: number; backup_date: string; created_at: string; media_count: number }>();
+  return json({ backups: rows.results });
+}
+
+async function createAdminBackup(request: Request, env: Env): Promise<Response> {
+  if (!await getAdminSession(request, env)) return json({ error: "Bitte melde dich mit deinem Rettungscode an." }, 401);
+  const backup = await createDailyBackup(env);
+  return json({ backup });
+}
+
+async function downloadStoredBackup(request: Request, env: Env, path: string): Promise<Response> {
+  if (!await getAdminSession(request, env)) return json({ error: "Bitte melde dich mit deinem Rettungscode an." }, 401);
+  const id = Number(path.split("/").pop());
+  const backup = await readStoredBackup(env, id);
+  return backup ? json(backup) : json({ error: "Dieses Backup wurde nicht gefunden." }, 404);
+}
+
+async function restoreStoredBackup(request: Request, env: Env, path: string): Promise<Response> {
+  if (!await getAdminSession(request, env)) return json({ error: "Bitte melde dich mit deinem Rettungscode an." }, 401);
+  const body = await request.json() as { confirmation?: string };
+  const id = Number(path.split("/")[4]);
+  const backup = await readStoredBackup(env, id);
+  if (!backup) return json({ error: "Dieses Backup wurde nicht gefunden." }, 404);
+  if (body.confirmation !== "BACKUP WIEDERHERSTELLEN") return json({ error: "Die zusätzliche Bestätigung stimmt nicht." }, 400);
+  await applyBackup(env, backup);
+  return json({ restored: true });
+}
+
+async function restoreBackup(request: Request, env: Env): Promise<Response> {
+  if (!await getAdminSession(request, env)) return json({ error: "Bitte melde dich mit deinem Rettungscode an." }, 401);
+  const body = await request.json() as { confirmation?: string; backup?: unknown };
+  if (body.confirmation !== "BACKUP WIEDERHERSTELLEN") return json({ error: "Die zusätzliche Bestätigung stimmt nicht." }, 400);
+  const backup = parseBackupForEnvironment(body.backup, env);
+  if (!backup) return json({ error: "Diese Backup-Datei ist ungültig oder gehört zur anderen Version." }, 400);
+  await applyBackup(env, backup);
+  return json({ restored: true });
+}
+
+function serialiseBackup(content: Record<string, unknown>, media: BackupMedia[]) {
+  return { ...content, media: media.map((item) => ({ ...item, body: binaryToBase64(item.body) })) };
+}
+
+async function readStoredBackup(env: Env, id: number) {
+  if (!Number.isInteger(id) || id < 1) return null;
+  const row = await env.DB.prepare("SELECT content_json FROM backups WHERE id = ?").bind(id).first<{ content_json: string }>();
+  if (!row) return null;
+  try {
+    const content = JSON.parse(row.content_json) as Record<string, unknown>;
+    const media = await env.DB.prepare("SELECT key, owner, mime_type, body FROM backup_media WHERE backup_id = ? ORDER BY key").bind(id).all<BackupMedia>();
+    return serialiseBackup(content, media.results);
+  } catch { return null; }
+}
+
+async function applyBackup(env: Env, rawBackup: Record<string, unknown>) {
+  const backup = parseBackupForEnvironment(rawBackup, env);
+  if (!backup) throw new Error("Ungültige Backup-Datei.");
+  const calendar = backup.calendar as { seasonYear: number; testDay?: number };
+  const answers = backup.answers as BackupAnswer[];
+  const views = backup.doorViews as { day: number; viewer: Partner; viewed_at?: string }[];
+  const reminders = backup.reminders as BackupReminder[];
+  const media = backup.media as Array<{ key: string; owner: Partner; mime_type: string; body: string }>;
+  await Promise.all([env.DB.prepare("DELETE FROM answers").run(), env.DB.prepare("DELETE FROM door_views").run(), env.DB.prepare("DELETE FROM media").run(), env.DB.prepare("DELETE FROM reminders").run(), env.DB.prepare("DELETE FROM sessions").run()]);
+  if (isTestEnvironment(env)) await env.DB.prepare("UPDATE calendar SET season_year = ?, test_day = ? WHERE id = 1").bind(calendar.seasonYear, calendar.testDay || 1).run();
+  else await env.DB.prepare("UPDATE calendar SET season_year = ? WHERE id = 1").bind(calendar.seasonYear).run();
+  await Promise.all([
+    ...answers.map((answer) => env.DB.prepare("INSERT INTO answers (day, author, content, kind, payload, updated_at) VALUES (?, ?, ?, ?, ?, ?)").bind(answer.day, answer.author, answer.content, answer.kind, answer.payload, answer.updated_at || new Date().toISOString()).run()),
+    ...views.map((view) => env.DB.prepare("INSERT INTO door_views (day, viewer, viewed_at) VALUES (?, ?, ?)").bind(view.day, view.viewer, view.viewed_at || new Date().toISOString()).run()),
+    ...reminders.map((reminder) => env.DB.prepare("INSERT INTO reminders (partner, enabled, reminder_time, endpoint, last_sent_year, updated_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)").bind(reminder.partner, reminder.enabled ? 1 : 0, reminder.reminder_time, reminder.endpoint, reminder.last_sent_year).run()),
+    ...media.map((item) => env.DB.prepare("INSERT INTO media (key, owner, mime_type, body) VALUES (?, ?, ?, ?)").bind(item.key, item.owner, item.mime_type, base64ToBinary(item.body)).run()),
+  ]);
+}
+
+function parseBackupForEnvironment(value: unknown, env: Env): Record<string, unknown> | null {
+  if (!value || typeof value !== "object") return null;
+  const backup = value as Record<string, unknown>;
+  const calendar = backup.calendar as Record<string, unknown> | undefined;
+  if (backup.format !== "pia-und-paul-backup" || backup.version !== 1 || backup.testMode !== isTestEnvironment(env) || !calendar || !Number.isInteger(Number(calendar.seasonYear)) || (isTestEnvironment(env) && (!Number.isInteger(Number(calendar.testDay)) || Number(calendar.testDay) < 1 || Number(calendar.testDay) > 25)) || !Array.isArray(backup.answers) || !Array.isArray(backup.doorViews) || !Array.isArray(backup.reminders) || !Array.isArray(backup.media)) return null;
+  const validAnswers = backup.answers.every((answer) => answer && typeof answer === "object" && Number.isInteger((answer as BackupAnswer).day) && (answer as BackupAnswer).day >= 1 && (answer as BackupAnswer).day <= 24 && isPartner((answer as BackupAnswer).author) && isAnswerKind((answer as BackupAnswer).kind) && typeof (answer as BackupAnswer).content === "string" && typeof (answer as BackupAnswer).payload !== "undefined");
+  const validMedia = backup.media.every((item) => item && typeof item === "object" && /^(media\/[a-f0-9-]+\.[a-z0-9]+|gift\/(pia|paul)\/(vorschau\.png|rezept\.pdf))$/i.test(String((item as { key?: unknown }).key)) && isPartner((item as { owner?: unknown }).owner) && typeof (item as { mime_type?: unknown }).mime_type === "string" && typeof (item as { body?: unknown }).body === "string");
+  return validAnswers && validMedia ? backup : null;
+}
+
+function binaryToBase64(value: ArrayBuffer) {
+  const bytes = new Uint8Array(value);
+  let binary = "";
+  for (let start = 0; start < bytes.length; start += 0x8000) binary += String.fromCharCode(...bytes.subarray(start, start + 0x8000));
+  return btoa(binary);
+}
+function base64ToBinary(value: string) { const decoded = atob(value); return Uint8Array.from(decoded, (char) => char.charCodeAt(0)).buffer; }
 
 async function readReminder(request: Request, env: Env): Promise<Response> {
   const session = await getSession(request, env);
@@ -507,6 +632,7 @@ function berlinDate() {
   const values = Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, Number(part.value)]));
   return { year: values.year, month: values.month, day: values.day };
 }
+function berlinDateKey() { const { year, month, day } = berlinDate(); return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`; }
 function berlinClock() {
   const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Berlin", year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts();
   const values = Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, Number(part.value)]));

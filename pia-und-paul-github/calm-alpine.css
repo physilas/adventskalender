@@ -569,6 +569,8 @@ body,
 .admin-gift-card { grid-column: span 2; }
 .admin-gifts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
 .admin-gift-form { padding: .85rem; border: 1px solid #6990a6; border-radius: .7rem; background: #08273d; }
+.admin-backup-actions { display: flex; flex-wrap: wrap; gap: .55rem; margin: 0 0 .85rem; }
+.admin-backup-actions .quiet-button { padding: .62rem .75rem; border-radius: .55rem; }
 .admin-danger { border-color: #bd8686; background: #321a27ed; }
 .admin-danger .eyebrow { color: #efb2b2; }
 .admin-danger code { color: #fff1f1; }
