@@ -3,11 +3,11 @@ const TEST_MODE = window.ADVENT_DEVELOPER_TEST === true;
 const TOKEN_STORAGE_KEY = TEST_MODE ? "pia-paul-calendar-test-token" : "pia-paul-calendar-token";
 const GUIDE_STORAGE_KEY = TEST_MODE ? "pia-paul-calendar-test-guide-seen" : "pia-paul-calendar-guide-seen";
 const app = document.querySelector("#app");
-// Prevent page pinching only outside dialogs and interactive maps.
-const allowPinch = (target) => target instanceof Element && target.closest('[role="dialog"], .leaflet-container');
+// Dialogs implement content-only zoom; Leaflet handles its own map gestures.
+const allowPinch = (target) => target instanceof Element && target.closest('.leaflet-container');
 for (const type of ["gesturestart", "gesturechange", "touchmove"]) {
   document.addEventListener(type, (event) => {
-    if (document.querySelector(".app-shell") && !allowPinch(event.target) &&
+    if (document.querySelector('.app-shell, [role="dialog"]') && !allowPinch(event.target) &&
         (type !== "touchmove" || event.touches.length > 1)) event.preventDefault();
   }, { passive: false });
 }
@@ -238,6 +238,7 @@ function renderAccess(message = "") {
     renderAccess();
   });
   const form = document.querySelector("#access-form");
+  setupPopupZoom();
   if (!form) return;
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -275,6 +276,60 @@ function renderApp(message = "") {
   document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => { activeView = button.dataset.view; calendarDetailOpen = false; workshopDetailOpen = false; renderApp(); }));
   bindDeveloperControls();
   if (activeView === "calendar") bindCalendar(); else bindWorkshop();
+  setupPopupZoom();
+}
+
+function setupPopupZoom() {
+  document.querySelectorAll('[role="dialog"] > article').forEach((card) => {
+    if (card.querySelector('.popup-zoom-scroll')) return;
+    const initialHeight = card.getBoundingClientRect().height;
+    const scroll = document.createElement('div');
+    scroll.className = 'popup-zoom-scroll';
+    const content = document.createElement('div');
+    content.className = 'popup-zoom-content';
+    [...card.childNodes].filter(node => !node.classList?.contains('modal-close')).forEach(node => content.append(node));
+    scroll.append(content);
+    card.append(scroll);
+    card.classList.add('content-zoom-card');
+    card.style.height = `${initialHeight}px`;
+    let scale = 1;
+    let pinch = null;
+    const distance = (touches) => Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+    scroll.addEventListener('touchstart', event => {
+      if (event.touches.length !== 2 || event.target.closest('.leaflet-container, canvas')) return;
+      const rect = scroll.getBoundingClientRect();
+      const x = (event.touches[0].clientX + event.touches[1].clientX) / 2 - rect.left;
+      const y = (event.touches[0].clientY + event.touches[1].clientY) / 2 - rect.top;
+      content.style.width = `${scroll.clientWidth}px`;
+      pinch = { distance: distance(event.touches), scale, x: (scroll.scrollLeft + x) / scale, y: (scroll.scrollTop + y) / scale };
+      event.preventDefault();
+    }, { passive: false });
+    scroll.addEventListener('touchmove', event => {
+      if (!pinch || event.touches.length !== 2) return;
+      event.preventDefault();
+      scale = Math.max(1, Math.min(2.5, pinch.scale * distance(event.touches) / Math.max(1, pinch.distance)));
+      content.style.zoom = String(scale);
+      const rect = scroll.getBoundingClientRect();
+      scroll.scrollLeft = pinch.x * scale - ((event.touches[0].clientX + event.touches[1].clientX) / 2 - rect.left);
+      scroll.scrollTop = pinch.y * scale - ((event.touches[0].clientY + event.touches[1].clientY) / 2 - rect.top);
+      reset.hidden = scale === 1;
+    }, { passive: false });
+    for (const type of ['touchend', 'touchcancel']) scroll.addEventListener(type, () => { pinch = null; });
+    const reset = document.createElement('button');
+    reset.type = 'button';
+    reset.className = 'popup-zoom-reset';
+    reset.textContent = '100 %';
+    reset.setAttribute('aria-label', 'Vergrößerung zurücksetzen');
+    reset.hidden = true;
+    reset.addEventListener('click', () => {
+      scale = 1;
+      content.style.zoom = '1';
+      content.style.width = '';
+      scroll.scrollLeft = 0;
+      reset.hidden = true;
+    });
+    card.append(reset);
+  });
 }
 
 function renderDeveloperControls(status) {

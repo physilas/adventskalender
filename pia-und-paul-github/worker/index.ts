@@ -318,7 +318,7 @@ async function sendDueReminders(env: Env) {
 async function sendPush(endpoint: string, env: Env) {
   const audience = new URL(endpoint).origin;
   const header = base64Url(JSON.stringify({ typ: "JWT", alg: "ES256" }));
-  const payload = base64Url(JSON.stringify({ aud: audience, exp: Math.floor(Date.now() / 1000) + 12 * 60 * 60, sub: "mailto:pia-und-paul@adventskalender.local" }));
+  const payload = base64Url(JSON.stringify({ aud: audience, exp: Math.floor(Date.now() / 1000) + 12 * 60 * 60, sub: "https://physilas.github.io/adventskalender/" }));
   const signingInput = `${header}.${payload}`;
   const key = await crypto.subtle.importKey("jwk", JSON.parse(env.VAPID_PRIVATE_JWK || "{}"), { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
   const signature = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(signingInput));

@@ -25,6 +25,13 @@ body,
 .app-shell, .welcome-shell { width: 100%; min-width: 0; }
 .app-shell > :not([role="dialog"]) { touch-action: pan-x pan-y; }
 .app-shell > [role="dialog"] { touch-action: auto; }
+.calendar-modal .content-zoom-card,
+.workshop-modal .content-zoom-card,
+.guide-modal .content-zoom-card { display: flex; flex-direction: column; overflow: hidden; }
+.popup-zoom-scroll { flex: 1; min-height: 0; min-width: 0; overflow: auto; overscroll-behavior: contain; touch-action: pan-x pan-y; }
+.popup-zoom-content { display: flow-root; min-width: 0; transform-origin: top left; }
+.popup-zoom-reset { position: absolute; top: .95rem; right: 3.7rem; z-index: 3; border: 1px solid #b8d2de; border-radius: .5rem; padding: .35rem; color: #245b7c; background: #fff; font: .8rem Arial, sans-serif; }
+.popup-zoom-reset[hidden] { display: none; }
 
 .welcome-shell {
   background-image:
