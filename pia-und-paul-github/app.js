@@ -3,6 +3,7 @@ const TEST_MODE = window.ADVENT_DEVELOPER_TEST === true;
 const TOKEN_STORAGE_KEY = TEST_MODE ? "pia-paul-calendar-test-token" : "pia-paul-calendar-token";
 const ADMIN_TOKEN_STORAGE_KEY = TEST_MODE ? "pia-paul-calendar-test-admin-token" : "pia-paul-calendar-admin-token";
 const GUIDE_STORAGE_KEY = TEST_MODE ? "pia-paul-calendar-test-guide-seen" : "pia-paul-calendar-guide-seen";
+const INSTALL_GUIDE_STORAGE_KEY = TEST_MODE ? "pia-paul-calendar-test-install-guide-seen" : "pia-paul-calendar-install-guide-seen";
 const app = document.querySelector("#app");
 // Dialogs implement content-only zoom; Leaflet handles its own map gestures.
 const allowPinch = (target) => target instanceof Element && target.closest('.leaflet-container');
@@ -90,6 +91,9 @@ let workshopDetailOpen = false;
 let selectedPartner = "pia";
 let adminMode = new URLSearchParams(window.location.search).get("admin") === "1";
 let guideOpen = !adminMode && localStorage.getItem(GUIDE_STORAGE_KEY) !== "seen";
+const isStandalone = () => window.matchMedia?.("(display-mode: standalone)").matches || window.navigator.standalone === true;
+const isMobileBrowser = () => /android|iphone|ipod|ipad/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+let installGuideOpen = !adminMode && !isStandalone() && isMobileBrowser() && localStorage.getItem(INSTALL_GUIDE_STORAGE_KEY) !== "seen";
 let mapPicker = null;
 let mapLocation = null;
 let recorder = null;
@@ -235,8 +239,27 @@ function render() {
 }
 
 function renderGuide() {
-  if (!guideOpen || adminMode) return "";
+  if (!guideOpen || installGuideOpen || adminMode) return "";
   return `<section class="guide-modal" role="dialog" aria-modal="true" aria-labelledby="guide-title"><article class="guide-card"><button class="modal-close" type="button" id="close-guide" aria-label="Anleitung schließen">×</button><p class="eyebrow">Willkommen</p><h2 id="guide-title">So funktioniert euer Adventskalender</h2><p>Liebe Pia, lieber Paul,</p><p>bald ist schon die Adventszeit! Und wir haben einen Adventskalender der etwas anderen Art für euch vorbereitet.</p><p><strong>Ihr dürft euch diesen digitalen Adventskalender gegenseitig befüllen – schließlich wisst ihr selbst am besten, worüber sich der andere freut und was ihm gefällt.</strong></p><p>Und so funktioniert er:</p><ol class="guide-steps"><li>Beim ersten Öffnen legt ihr gemeinsam einen Schlüssel fest. Merkt ihn euch gut und teilt ihn nur miteinander.</li><li>In <strong>Deiner Werkstatt</strong> könnt ihr beide schon jetzt alle 24 Überraschungen für den anderen vorbereiten. Die Fragen sind absichtlich verschieden – so bleibt es spannend. Speichern nicht vergessen!</li><li>In <strong>Deinem Adventskalender</strong> warten im Dezember die Antworten des anderen hinter den Türchen. Die Türchen öffnen sich passend zum Datum. Ein früher Klick ist erlaubt, aber die Überraschung bleibt dann natürlich noch geheim.</li><li>Solange der andere eine Antwort noch nicht gesehen hat, könnt ihr sie in der Werkstatt wieder zurückziehen und neu machen. Der 24. ist schon vorbereitet – da dürft ihr euch einfach überraschen lassen.</li></ol><p>Und sollte irgendwas nicht klappen oder ihr Support brauchen, meldet euch einfach!</p><p>Wir hoffen, dass ihr genau so viel Spaß damit habt wie wir beim Erstellen! Und wenn es dann soweit ist: Eine wunderschöne erste Adventszeit als Verheiratete!</p><p class="guide-signoff">Eure Janika und Silas</p><button class="primary-button" type="button" id="guide-done">Los geht’s</button></article></section>`;
+}
+
+function renderInstallGuide() {
+  if (!installGuideOpen) return "";
+  const ios = /iphone|ipod|ipad/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const steps = ios
+    ? `<ol class="guide-steps"><li>Tippe unten im Browser auf das <strong>Teilen-Symbol</strong> <span aria-hidden="true">□↑</span>.</li><li>Wähle <strong>„Zum Home-Bildschirm“</strong>.</li><li>Tippe auf <strong>„Hinzufügen“</strong> und öffne den Adventskalender anschließend über das neue Icon.</li></ol>`
+    : `<ol class="guide-steps"><li>Öffne im Browser das Menü <strong>⋮</strong>.</li><li>Wähle <strong>„App installieren“</strong> oder <strong>„Zum Startbildschirm hinzufügen“</strong>.</li><li>Öffne den Adventskalender anschließend über das neue Icon auf deinem Home-Bildschirm.</li></ol>`;
+  return `<section class="install-modal" role="dialog" aria-modal="true" aria-labelledby="install-guide-title"><article class="guide-card"><p class="eyebrow">Für euer Handy</p><h2 id="install-guide-title">Am schönsten als App</h2><p>Bitte legt den Adventskalender einmal auf euren Home-Bildschirm. Dort fühlt er sich wie eine richtige kleine App an — ohne Browserleiste und mit allen Funktionen an ihrem vorgesehenen Platz.</p>${steps}<p class="field-hint">Danach nutzt ihr am besten nur noch das Icon auf eurem Home-Bildschirm.</p><button class="primary-button" type="button" id="install-guide-done">Verstanden</button></article></section>`;
+}
+
+function bindInstallGuide() {
+  document.querySelector("#install-guide-done")?.addEventListener("click", () => {
+    installGuideOpen = false;
+    guideOpen = false;
+    localStorage.setItem(INSTALL_GUIDE_STORAGE_KEY, "seen");
+    localStorage.setItem(GUIDE_STORAGE_KEY, "seen");
+    render();
+  });
 }
 
 function renderAccess(message = "") {
@@ -250,7 +273,7 @@ function renderAccess(message = "") {
   const intro = adminMode ? adminSetup ? "Lege deinen privaten Rettungscode fest. Pia und Paul sehen diese Seite nicht." : "Melde dich mit deinem Rettungscode an. Dieser Bereich ist nur für dich gedacht." : setup ? "Legt euren gemeinsamen Schlüssel fest und teilt ihn anschließend nur miteinander." : "Wähle deinen Namen und öffne euren gemeinsamen Adventskalender.";
   const activeForm = adminMode ? adminSetup ? recoverySetupForm : adminLoginForm : standardForm;
   const guideButton = !adminMode ? '<button class="quiet-button guide-button" type="button" id="open-guide">Anleitung</button>' : "";
-  app.innerHTML = `<main class="welcome-shell"><section class="welcome-card"><div class="heart-mark">♥</div><p class="eyebrow">Pia & Paul</p><h1>${title}</h1><p class="intro">${intro}</p>${activeForm ? `<form class="access-form" id="access-form">${activeForm}${message ? `<p class="form-message">${escape(message)}</p>` : ""}</form>` : message ? `<p class="form-message">${escape(message)}</p>` : ""}${guideButton}</section></main>${renderGuide()}`;
+  app.innerHTML = `<main class="welcome-shell"><section class="welcome-card"><div class="heart-mark">♥</div><p class="eyebrow">Pia & Paul</p><h1>${title}</h1><p class="intro">${intro}</p>${activeForm ? `<form class="access-form" id="access-form">${activeForm}${message ? `<p class="form-message">${escape(message)}</p>` : ""}</form>` : message ? `<p class="form-message">${escape(message)}</p>` : ""}${guideButton}</section></main>${renderGuide()}${renderInstallGuide()}`;
   const closeGuide = () => {
     guideOpen = false;
     localStorage.setItem(GUIDE_STORAGE_KEY, "seen");
@@ -259,6 +282,7 @@ function renderAccess(message = "") {
   document.querySelector("#open-guide")?.addEventListener("click", () => { guideOpen = true; renderAccess(); });
   document.querySelector("#close-guide")?.addEventListener("click", closeGuide);
   document.querySelector("#guide-done")?.addEventListener("click", closeGuide);
+  bindInstallGuide();
   document.querySelectorAll("[data-person]").forEach((button) => button.addEventListener("click", () => { selectedPartner = button.dataset.person; renderAccess(); }));
   document.querySelector("#recover-access")?.addEventListener("click", () => renderAccess("Wendet euch an die Person, von der ihr den Adventskalender bekommen habt. Sie kann euch mit einem neuen gemeinsamen Schlüssel helfen."));
   const form = document.querySelector("#access-form");
@@ -328,9 +352,10 @@ function renderApp(message = "") {
   const { session, status, seasonYear } = state;
   const heading = status.phase === "before" ? `Bereit für den 1. Dezember ${seasonYear}` : status.phase === "complete" ? "Alle Türchen sind offen" : `Dezember ${seasonYear}`;
   const developerControls = TEST_MODE ? renderDeveloperControls(status) : "";
-  app.innerHTML = `<main class="app-shell ${activeView === "calendar" ? "calendar-shell" : "workshop-shell"}"><header class="topbar"><div class="brand"><span class="mini-heart">♥</span><span>Pia <i>&</i> Paul</span></div><button class="quiet-button" id="signout">Abmelden</button></header><section class="hero-row"><div><p class="eyebrow">Adventskalender</p><h1>${heading}</h1></div><p class="hero-note">${activeView === "calendar" ? `Für dich: die kleinen Überraschungen von ${name(other(session.partner))}.` : `Deine Werkstatt: Bereite alle 24 Überraschungen für ${name(other(session.partner))} vor.`}</p></section><nav class="view-switch" aria-label="Bereich wählen"><button data-view="calendar" class="${activeView === "calendar" ? "selected" : ""}">♥ Dein Adventskalender</button><button data-view="workshop" class="${activeView === "workshop" ? "selected" : ""}">✦ Deine Werkstatt</button></nav>${developerControls}${activeView === "calendar" ? renderCalendar() : renderWorkshop(message)}</main>${renderToast()}`;
+  app.innerHTML = `<main class="app-shell ${activeView === "calendar" ? "calendar-shell" : "workshop-shell"}"><header class="topbar"><div class="brand"><span class="mini-heart">♥</span><span>Pia <i>&</i> Paul</span></div><button class="quiet-button" id="signout">Abmelden</button></header><section class="hero-row"><div><p class="eyebrow">Adventskalender</p><h1>${heading}</h1></div><p class="hero-note">${activeView === "calendar" ? `Für dich: die kleinen Überraschungen von ${name(other(session.partner))}.` : `Deine Werkstatt: Bereite alle 24 Überraschungen für ${name(other(session.partner))} vor.`}</p></section><nav class="view-switch" aria-label="Bereich wählen"><button data-view="calendar" class="${activeView === "calendar" ? "selected" : ""}">♥ Dein Adventskalender</button><button data-view="workshop" class="${activeView === "workshop" ? "selected" : ""}">✦ Deine Werkstatt</button></nav>${developerControls}${activeView === "calendar" ? renderCalendar() : renderWorkshop(message)}</main>${renderToast()}${renderInstallGuide()}`;
   document.querySelector("#signout").addEventListener("click", () => { localStorage.removeItem(TOKEN_STORAGE_KEY); state.session = null; render(); });
   document.querySelector("#close-toast")?.addEventListener("click", () => { appToast = ""; clearTimeout(toastTimer); renderApp(); });
+  bindInstallGuide();
   document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => { activeView = button.dataset.view; calendarDetailOpen = false; workshopDetailOpen = false; renderApp(); }));
   bindDeveloperControls();
   if (activeView === "calendar") bindCalendar(); else bindWorkshop();
