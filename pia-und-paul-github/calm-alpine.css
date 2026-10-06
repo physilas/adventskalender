@@ -161,21 +161,21 @@ body,
 .door.locked { background: linear-gradient(180deg, #dceff5 0%, #9bc5d6 100%); }
 .door.active { border-color: #245b7c !important; background: linear-gradient(180deg, #91cddd 0%, #2e6d91 100%) !important; box-shadow: 0 0 0 2px #d9edf3 !important; }
 .calendar-door.locked {
-  color: #62808f;
-  border-color: #a1bac4;
-  background: linear-gradient(180deg, #d9e9ef 0%, #9dbdca 100%) !important;
-  opacity: .78;
-  filter: saturate(.52);
+  color: #52798d;
+  border-color: #95bbcc;
+  background: linear-gradient(rgb(255 255 255 / .36), rgb(255 255 255 / .36)), linear-gradient(180deg, #c7e7f1 0%, #84b8cd 100%) !important;
+  opacity: .96;
+  filter: saturate(.78);
 }
 .calendar-door.locked.active {
-  color: #56788a !important;
-  border-color: #80a8b8 !important;
-  background: linear-gradient(180deg, #d1e6ee 0%, #91b5c4 100%) !important;
-  box-shadow: 0 0 0 2px #d2e4ea !important;
-  opacity: .84;
+  color: #426b82 !important;
+  border-color: #6d9fb8 !important;
+  background: linear-gradient(rgb(255 255 255 / .28), rgb(255 255 255 / .28)), linear-gradient(180deg, #b6dfed 0%, #71aac4 100%) !important;
+  box-shadow: 0 0 0 2px #d2eaf2 !important;
+  opacity: .97;
 }
 .calendar-door.locked.active > span {
-  color: #4e7183;
+  color: #39677f;
   text-shadow: none;
 }
 
