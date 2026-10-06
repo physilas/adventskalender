@@ -156,6 +156,18 @@ body,
 .door.workshop-door.complete { opacity: .92; }
 .door.calendar-door.missing,
 .door.workshop-door.overdue { filter: saturate(.86); opacity: .84; }
+.door.workshop-door.special {
+  border-color: #b8c8cf;
+  background: linear-gradient(180deg, #dce8ec 0%, #9fb7c1 100%);
+  filter: saturate(.38);
+  opacity: .72;
+}
+.door.workshop-door.special.active {
+  border-color: #8caab6 !important;
+  background: linear-gradient(180deg, #d4e4e9 0%, #98b2bd 100%) !important;
+  box-shadow: 0 0 0 2px #d7e5e9 !important;
+  opacity: .84;
+}
 .door.workshop-door.today { border-color: #245b7c; }
 .door.workshop-door.upcoming,
 .door.locked { background: linear-gradient(180deg, #dceff5 0%, #9bc5d6 100%); }
@@ -500,12 +512,38 @@ body,
 .calendar-legend { color: #e3f1f7; text-shadow: 0 1px 4px #020b14; }
 
 @media (max-width: 700px) {
+  html:has(.app-shell),
+  body:has(.app-shell),
+  #app:has(.app-shell) {
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  body:has(.app-shell) {
+    background-image:
+      linear-gradient(180deg, #03102166 0%, #061523a6 100%),
+      url("https://images.unsplash.com/photo-1593959734793-6e92d102da1e?auto=format&fit=crop&w=2400&q=85");
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+  }
+  .app-shell.calendar-shell,
+  .workshop-shell {
+    min-height: 100dvh;
+    height: 100dvh;
+    padding-bottom: max(.8rem, env(safe-area-inset-bottom));
+    background-attachment: scroll;
+  }
+  .calendar-shell .topbar,
+  .workshop-shell .topbar { padding-top: max(.85rem, calc(env(safe-area-inset-top) + .4rem)); }
   .calendar-shell .view-switch { background: #f1f6f8; }
   .calendar-shell .calendar-layout--calendar .door-grid { gap: .48rem; }
   html:has(.workshop-shell),
   body:has(.workshop-shell) { height: 100%; overflow: hidden; }
-  .workshop-shell { padding: 0 .85rem .8rem; }
-  .workshop-shell .topbar { padding: .75rem 0 .45rem; }
+  .workshop-shell { padding: 0 .85rem max(.8rem, env(safe-area-inset-bottom)); }
+  .workshop-shell .topbar { padding: max(.85rem, calc(env(safe-area-inset-top) + .4rem)) 0 .45rem; }
   .workshop-shell .hero-row { display: none; }
   .workshop-shell .view-switch { margin: 0 auto .55rem; background: #f1f6f8; }
   .workshop-shell .view-switch button { padding: .58rem .5rem; }

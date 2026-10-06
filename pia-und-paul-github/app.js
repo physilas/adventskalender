@@ -95,6 +95,8 @@ function other(partner) { return partner === "pia" ? "paul" : "pia"; }
 function name(partner) { return partner === "pia" ? "Pia" : "Paul"; }
 function escape(value = "") { return String(value).replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]); }
 function token() { return localStorage.getItem(TOKEN_STORAGE_KEY) || ""; }
+function giftAcknowledgementKey(partner) { return `${TEST_MODE ? "pia-paul-test" : "pia-paul"}-gift-acknowledged-${partner}`; }
+function hasAcknowledgedGift(partner) { return localStorage.getItem(giftAcknowledgementKey(partner)) === "yes"; }
 function shuffledDoorDays(partner, year) {
   // Deterministic shuffle: festive disorder, but positions do not jump on re-render.
   let seed = [...`${partner}-${year}`].reduce((value, char) => ((value * 31) + char.charCodeAt(0)) >>> 0, 2026);
@@ -352,11 +354,15 @@ function bindCalendar() {
 function renderWorkshop(message = "") {
   const { session, status, ownAnswers = {} } = state;
   const today = status.phase === "active" ? status.writeDay : status.phase === "complete" ? 25 : 0;
+  const giftAcknowledged = hasAcknowledgedGift(session.partner);
   const doors = days.map((day) => {
     const answer = ownAnswers[day];
-    const isSelfContained = ["gift", "offline"].includes(prompts[session.partner][day - 1].kind);
-    const stateClass = isSelfContained || answer ? "complete" : day < today ? "overdue" : day === today ? "today" : "upcoming";
-    const marker = isSelfContained || answer ? "✓" : day < today ? "!" : day === today ? "•" : "";
+    const doorPrompt = prompts[session.partner][day - 1];
+    const isGiftDoor = doorPrompt.kind === "gift";
+    const isSpecialDoor = isGiftDoor || doorPrompt.kind === "offline";
+    const isComplete = Boolean(answer) || (isGiftDoor && giftAcknowledged);
+    const stateClass = isComplete ? "complete" : isSpecialDoor ? "special" : day < today ? "overdue" : day === today ? "today" : "upcoming";
+    const marker = isComplete ? "✓" : day < today && !isSpecialDoor ? "!" : day === today && !isSpecialDoor ? "•" : "";
     return `<button class="door workshop-door ${stateClass} ${selectedWorkshopDay === day ? "active" : ""}" data-workshop-day="${day}">${mountain(day)}<span>${day}</span><b aria-hidden="true">${marker}</b></button>`;
   }).join("");
   const prompt = prompts[session.partner][selectedWorkshopDay - 1];
@@ -365,13 +371,13 @@ function renderWorkshop(message = "") {
   const isOffline = prompt.kind === "offline";
   const canRetract = state.withdrawableDays?.includes(selectedWorkshopDay);
   const retractControl = answer ? canRetract ? `<button type="button" class="retract-button" id="retract-answer">Antwort zurückziehen</button>` : `<p class="retract-note">Diese Antwort wurde schon geöffnet und bleibt deshalb als Überraschung erhalten.</p>` : "";
-  const detail = `<article class="door-detail workshop-detail"><button class="modal-close" type="button" aria-label="Werkstatt-Türchen schließen">×</button><div class="detail-top"><p class="eyebrow workshop-detail-title"><span>Werkstatt</span><span>Türchen ${selectedWorkshopDay}</span></p><span class="status-pill">${isGift ? "✓ vorbereitet" : isOffline ? "✓ ganz in echt" : answer ? "✓ vorbereitet" : prompt.kind === "ranking" ? "↕ sortieren" : selectedWorkshopDay < today ? "! nachholen" : "✦ frei gestaltbar"}</span></div>${isGift ? renderGiftCopy() : isOffline ? renderOfflineWorkshopCopy(prompt, other(session.partner)) : `<p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${prompt.hint ? `<p class="prompt-hint">${escape(prompt.hint)}</p>` : ""}${renderEditor(prompt, answer)}${retractControl}${message ? `<p class="save-message">${escape(message)}</p>` : ""}`}</article>`;
+  const detail = `<article class="door-detail workshop-detail"><button class="modal-close" type="button" aria-label="Werkstatt-Türchen schließen">×</button><div class="detail-top"><p class="eyebrow workshop-detail-title"><span>Werkstatt</span><span>Türchen ${selectedWorkshopDay}</span></p><span class="status-pill">${isGift ? giftAcknowledged ? "✓ vorbereitet" : "✦ Überraschung" : isOffline ? "♥ ganz in echt" : answer ? "✓ vorbereitet" : prompt.kind === "ranking" ? "↕ sortieren" : selectedWorkshopDay < today ? "! nachholen" : "✦ frei gestaltbar"}</span></div>${isGift ? renderGiftCopy(undefined, giftAcknowledged) : isOffline ? renderOfflineWorkshopCopy(prompt, other(session.partner)) : `<p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${prompt.hint ? `<p class="prompt-hint">${escape(prompt.hint)}</p>` : ""}${renderEditor(prompt, answer)}${retractControl}${message ? `<p class="save-message">${escape(message)}</p>` : ""}`}</article>`;
   const modal = workshopDetailOpen ? `<section class="workshop-modal" role="dialog" aria-modal="true" aria-label="Werkstatt-Türchen ${selectedWorkshopDay}">${detail}</section>` : "";
   return `<section class="calendar-layout workshop-layout"><nav class="door-grid" aria-label="Deine Werkstatt-Türchen">${doors}</nav></section>${modal}<p class="legend workshop-legend"><span class="legend-complete">✓</span> vorbereitet <span class="legend-missing">!</span> nachholen <span class="legend-today">•</span> heute</p>`;
 }
 
-function renderGiftCopy(recipient) {
-  if (!recipient) return `<section class="gift-copy"><span aria-hidden="true">✦</span><h2>Lasst euch überraschen :)</h2><p>Dieses Türchen ist schon für euch vorbereitet.</p></section>`;
+function renderGiftCopy(recipient, acknowledged = false) {
+  if (!recipient) return `<section class="gift-copy"><span aria-hidden="true">✦</span><h2>Lasst euch überraschen :)</h2><p>Dieses Türchen ist schon für euch vorbereitet.</p>${acknowledged ? '<p class="field-hint">✓ Die Überraschung wartet geduldig auf Weihnachten.</p>' : '<button class="primary-button" type="button" id="acknowledge-gift">Oh schön, ich freue mich!</button>'}</section>`;
   const recipe = recipient === "pia"
     ? { title: "Sommer-Bolognese", previewKey: "gift/pia/vorschau.png", pdfKey: "gift/pia/rezept.pdf", alt: "Vorschau des Rezepts Sommer-Bolognese" }
     : { title: "Sommer-Bolognese in Python", previewKey: "gift/paul/vorschau.png", pdfKey: "gift/paul/rezept.pdf", alt: "Vorschau des Python-Rezepts Sommer-Bolognese" };
@@ -457,6 +463,10 @@ function bindWorkshop() {
   if (prompt.kind === "image") setupPhotoPreview();
   if (prompt.kind === "meme") setupMemeEditor();
   if (prompt.kind === "ranking") setupRankingSort();
+  document.querySelector("#acknowledge-gift")?.addEventListener("click", () => {
+    localStorage.setItem(giftAcknowledgementKey(state.session.partner), "yes");
+    renderApp("Wunderbar – das Türchen ist für Weihnachten aktiviert.");
+  });
   document.querySelector("#retract-answer")?.addEventListener("click", async () => {
     if (!window.confirm("Antwort wirklich zurückziehen? Sie wird wieder als unbearbeitet angezeigt.")) return;
     const button = document.querySelector("#retract-answer");
