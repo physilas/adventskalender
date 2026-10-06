@@ -405,6 +405,11 @@ body,
 .gift-preview span { padding: 0 .15rem; }
 .gift-download { display: inline-flex; align-items: center; justify-self: start; padding: .7rem .9rem; border: 0; border-radius: .65rem; color: #fff; background: #245b7c; font-family: Arial, Helvetica, sans-serif; font-size: .9rem; font-weight: 700; line-height: 1.2; text-decoration: none; cursor: pointer; }
 .gift-download:hover { background: #173f59; }
+.reminder-settings { display: grid; gap: .7rem; margin-top: 1.3rem; padding: 1rem; border: 1px solid #c8dce5; border-radius: .85rem; background: #f3f9fb; text-align: left; }
+.reminder-settings .note-label { margin: 0; }
+.reminder-settings .field-hint { margin: 0; }
+.reminder-settings .choice-option { background: #fff; }
+.reminder-settings .answer-input { margin-top: .15rem; }
 .retract-button {
   justify-self: start;
   margin-top: .35rem;

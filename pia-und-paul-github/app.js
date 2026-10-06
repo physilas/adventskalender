@@ -384,7 +384,13 @@ function renderGiftCopy(recipient, acknowledged = false) {
     : { title: "Sommer-Bolognese in Python", previewKey: "gift/paul/vorschau.png", pdfKey: "gift/paul/rezept.pdf", alt: "Vorschau des Python-Rezepts Sommer-Bolognese" };
   return `<section class="gift-copy gift-recipe"><span aria-hidden="true">✦</span><p class="answer-kind">Euer Hochzeitsgeschenk</p><h2>${recipe.title}</h2><p>Liebe Pia, lieber Paul, heute gibt es ein kleines nachgeholtes Hochzeitsgeschenk von uns! Hier findest du eines unserer liebsten Rezepte für euer Rezeptbuch :) Gottes Segen für euer erstes Weihnachten als Ehepaar und viel Freude beim Nachkochen! Eure Janika und Silas</p><div class="gift-preview"><div class="gift-preview-media media-slot" data-media-kind="image" data-media-key="${recipe.previewKey}" data-media-alt="${recipe.alt}">Rezeptvorschau wird geladen …</div><span>Vorschau eures Rezepts</span></div><button class="gift-download" type="button" data-gift-download data-media-key="${recipe.pdfKey}" data-download-name="${recipient}-rezept.pdf">PDF herunterladen</button></section>`;
 }
-function renderOfflineWorkshopCopy(prompt, partner) { return `<section class="gift-copy offline-copy"><span aria-hidden="true">♥</span><p class="answer-kind">Ganz in echt</p><h2>${escape(prompt.prompt)}</h2><p>Dieses Mal nichts schreiben, sondern ${name(partner)} ganz in echt etwas ins Ohr flüstern.</p></section>`; }
+function renderOfflineWorkshopCopy(prompt, partner) {
+  const reminder = state.session.partner === "pia" && selectedWorkshopDay === 6 ? renderPiaReminder() : "";
+  return `<section class="gift-copy offline-copy"><span aria-hidden="true">♥</span><p class="answer-kind">Ganz in echt</p><h2>${escape(prompt.prompt)}</h2><p>Dieses Mal nichts schreiben, sondern ${name(partner)} ganz in echt etwas ins Ohr flüstern.</p>${reminder}</section>`;
+}
+function renderPiaReminder() {
+  return `<section class="reminder-settings" aria-live="polite"><p class="note-label">Kleine Erinnerung für Pia</p><p class="field-hint">Wenn du magst, erinnert dich dein Handy am 6. Dezember an dieses Türchen.</p><label class="choice-option"><input type="radio" name="reminder-choice" value="enabled"><span>Erinnere mich am 6. Dezember!</span></label><div id="reminder-time-wrap" hidden><label for="reminder-time">Uhrzeit</label><input class="answer-input" id="reminder-time" type="time" value="09:00" step="60"></div><label class="choice-option"><input type="radio" name="reminder-choice" value="disabled" checked><span>Ich denke selber dran.</span></label><p class="field-hint" id="reminder-status">Die Erinnerung ist ausgeschaltet.</p></section>`;
+}
 function renderOfflineCalendarCopy(prompt) { return `<section class="gift-copy offline-copy"><span aria-hidden="true">♥</span><p class="answer-kind">Ganz in echt</p><h2>${escape(prompt.prompt)}</h2><p>Die Antwort bleibt heute zwischen euch beiden.</p></section>`; }
 
 function renderEditor(prompt, answer) {
@@ -464,6 +470,7 @@ function bindWorkshop() {
   if (prompt.kind === "image") setupPhotoPreview();
   if (prompt.kind === "meme") setupMemeEditor();
   if (prompt.kind === "ranking") setupRankingSort();
+  if (prompt.kind === "offline" && state.session.partner === "pia" && selectedWorkshopDay === 6) setupPiaReminder();
   document.querySelector("#acknowledge-gift")?.addEventListener("click", () => {
     localStorage.setItem(giftAcknowledgementKey(state.session.partner), "yes");
     renderApp("Wunderbar – das Türchen ist für Weihnachten aktiviert.");
@@ -484,6 +491,65 @@ function bindWorkshop() {
   });
   document.querySelector(".workshop-modal .modal-close")?.addEventListener("click", () => { workshopDetailOpen = false; renderApp(); });
   hydrateMedia();
+}
+
+async function setupPiaReminder() {
+  const status = document.querySelector("#reminder-status");
+  const timeInput = document.querySelector("#reminder-time");
+  const timeWrap = document.querySelector("#reminder-time-wrap");
+  const radios = [...document.querySelectorAll('input[name="reminder-choice"]')];
+  if (!status || !timeInput || !timeWrap || !radios.length) return;
+  const setUi = (enabled, time = "09:00", message = "") => {
+    radios.forEach((radio) => { radio.checked = radio.value === (enabled ? "enabled" : "disabled"); });
+    timeInput.value = time;
+    timeWrap.hidden = !enabled;
+    status.textContent = message || (enabled ? `Erinnerung für den 6. Dezember um ${time} Uhr eingestellt.` : "Die Erinnerung ist ausgeschaltet.");
+  };
+  try {
+    const setting = await api("/api/reminder");
+    if (!setting.publicKey) {
+      status.textContent = "Die Erinnerungsfunktion wird gerade noch eingerichtet.";
+      return;
+    }
+    setUi(setting.enabled, setting.time);
+    radios.forEach((radio) => radio.addEventListener("change", async () => {
+      try {
+        if (radio.value === "enabled") await enablePiaReminder(setting.publicKey, timeInput.value, setUi);
+        else await disablePiaReminder(timeInput.value, setUi);
+      } catch (error) {
+        setUi(false, timeInput.value, error.message);
+      }
+    }));
+    timeInput.addEventListener("change", async () => {
+      if (!document.querySelector('input[name="reminder-choice"]:checked')?.value.includes("enabled")) return;
+      try { await enablePiaReminder(setting.publicKey, timeInput.value, setUi); }
+      catch (error) { status.textContent = error.message; }
+    });
+  } catch (error) { status.textContent = error.message; }
+}
+
+async function enablePiaReminder(publicKey, time, setUi) {
+  if (!window.Notification || !navigator.serviceWorker || !window.PushManager) throw new Error("Dieses Gerät unterstützt leider keine Web-Benachrichtigungen.");
+  const registration = await navigator.serviceWorker.register("service-worker.js");
+  const permission = await Notification.requestPermission();
+  if (permission !== "granted") throw new Error("Bitte erlaube Benachrichtigungen, damit die Erinnerung funktionieren kann.");
+  let subscription = await registration.pushManager.getSubscription();
+  if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64UrlToUint8Array(publicKey) });
+  await api("/api/reminder", { method: "PUT", body: JSON.stringify({ enabled: true, time, endpoint: subscription.endpoint }) });
+  setUi(true, time);
+}
+
+async function disablePiaReminder(time, setUi) {
+  const registration = await navigator.serviceWorker.getRegistration("service-worker.js");
+  const subscription = await registration?.pushManager.getSubscription();
+  await subscription?.unsubscribe();
+  await api("/api/reminder", { method: "DELETE", body: JSON.stringify({ time }) });
+  setUi(false, time);
+}
+
+function base64UrlToUint8Array(value) {
+  const padded = `${value}${"=".repeat((4 - value.length % 4) % 4)}`.replaceAll("-", "+").replaceAll("_", "/");
+  return Uint8Array.from(atob(padded), (character) => character.charCodeAt(0));
 }
 
 async function saveWorkshopAnswer(prompt, previous) {

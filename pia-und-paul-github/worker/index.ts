@@ -1,6 +1,8 @@
 export interface Env {
   DB: D1Database;
   TEST_MODE?: string;
+  VAPID_PUBLIC_KEY?: string;
+  VAPID_PRIVATE_JWK?: string;
 }
 
 type Partner = "pia" | "paul";
@@ -8,6 +10,7 @@ type AnswerKind = "text" | "choice" | "choice-custom" | "ranking" | "image" | "a
 type Calendar = { id: number; access_code_hash: string; recovery_code_hash?: string | null; setup_complete?: number; season_year: number; test_day?: number };
 type Session = { partner: Partner };
 type AnswerRow = { day: number; content: string; kind?: string; payload?: string | null; updated_at: string };
+type ReminderRow = { enabled: number; reminder_time: string; endpoint: string | null; last_sent_year: number | null };
 
 const JSON_HEADERS = { "content-type": "application/json; charset=UTF-8" };
 const ANSWER_KINDS: AnswerKind[] = ["text", "choice", "choice-custom", "ranking", "image", "audio", "drawing", "drawing-riddle", "map", "link"];
@@ -23,6 +26,9 @@ export default {
       return await withCors(json({ error: "Der Adventskalender ist gerade nicht erreichbar." }, 500), request);
     }
   },
+  async scheduled(_event: unknown, env: Env, ctx: { waitUntil(promise: Promise<unknown>): void }) {
+    ctx.waitUntil(sendDueReminders(env));
+  },
 };
 
 async function route(request: Request, env: Env, url: URL): Promise<Response> {
@@ -36,10 +42,43 @@ async function route(request: Request, env: Env, url: URL): Promise<Response> {
   if (path.startsWith("/api/answers/") && request.method === "DELETE") return retractAnswer(request, env, path);
   if (path === "/api/riddles/guess" && request.method === "POST") return checkRiddleGuess(request, env);
   if (path === "/api/doors/open" && request.method === "POST") return markDoorSeen(request, env);
+  if (path === "/api/reminder" && request.method === "GET") return readReminder(request, env);
+  if (path === "/api/reminder" && request.method === "PUT") return saveReminder(request, env);
+  if (path === "/api/reminder" && request.method === "DELETE") return disableReminder(request, env);
   if (path === "/api/media" && request.method === "POST") return uploadMedia(request, env, url);
   if (path.startsWith("/api/media/") && request.method === "GET") return readMedia(request, env, path);
   if (path === "/api/test/day" && request.method === "POST" && isTestEnvironment(env)) return setTestDay(request, env);
   return json({ error: "Nicht gefunden." }, 404);
+}
+
+async function readReminder(request: Request, env: Env): Promise<Response> {
+  const session = await getSession(request, env);
+  if (!session || session.partner !== "pia") return json({ error: "Diese Erinnerung kann nur Pia einstellen." }, 403);
+  const reminder = await env.DB.prepare("SELECT enabled, reminder_time, endpoint, last_sent_year FROM reminders WHERE partner = 'pia'").first<ReminderRow>();
+  return json({ enabled: Boolean(reminder?.enabled), time: reminder?.reminder_time || "09:00", publicKey: env.VAPID_PUBLIC_KEY || null });
+}
+
+async function saveReminder(request: Request, env: Env): Promise<Response> {
+  const session = await getSession(request, env);
+  if (!session || session.partner !== "pia") return json({ error: "Diese Erinnerung kann nur Pia einstellen." }, 403);
+  const body = await request.json() as { enabled?: boolean; time?: string; endpoint?: string };
+  const time = body.time || "09:00";
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return json({ error: "Bitte wähle eine gültige Uhrzeit." }, 400);
+  if (!body.enabled) {
+    await env.DB.prepare("INSERT INTO reminders (partner, enabled, reminder_time, endpoint, updated_at) VALUES ('pia', 0, ?, NULL, CURRENT_TIMESTAMP) ON CONFLICT(partner) DO UPDATE SET enabled = 0, reminder_time = excluded.reminder_time, endpoint = NULL, updated_at = CURRENT_TIMESTAMP").bind(time).run();
+    return json({ enabled: false, time });
+  }
+  if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_JWK) return json({ error: "Die Erinnerungsfunktion wird gerade noch eingerichtet." }, 503);
+  if (!isPushEndpoint(body.endpoint)) return json({ error: "Die Benachrichtigung konnte auf diesem Gerät nicht eingerichtet werden." }, 400);
+  await env.DB.prepare("INSERT INTO reminders (partner, enabled, reminder_time, endpoint, last_sent_year, updated_at) VALUES ('pia', 1, ?, ?, NULL, CURRENT_TIMESTAMP) ON CONFLICT(partner) DO UPDATE SET enabled = 1, reminder_time = excluded.reminder_time, endpoint = excluded.endpoint, last_sent_year = NULL, updated_at = CURRENT_TIMESTAMP").bind(time, body.endpoint).run();
+  return json({ enabled: true, time });
+}
+
+async function disableReminder(request: Request, env: Env): Promise<Response> {
+  const session = await getSession(request, env);
+  if (!session || session.partner !== "pia") return json({ error: "Diese Erinnerung kann nur Pia einstellen." }, 403);
+  await env.DB.prepare("UPDATE reminders SET enabled = 0, endpoint = NULL, updated_at = CURRENT_TIMESTAMP WHERE partner = 'pia'").run();
+  return json({ enabled: false });
 }
 
 async function readCalendar(request: Request, env: Env): Promise<Response> {
@@ -241,6 +280,38 @@ async function setTestDay(request: Request, env: Env): Promise<Response> {
   return json({ status: seasonStatus({ ...calendar, test_day: body.day }, env) });
 }
 
+async function sendDueReminders(env: Env) {
+  if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_JWK) return;
+  const now = berlinClock();
+  // Der Cron läuft nur am 5. und 6. Dezember UTC. Entscheidend ist trotzdem
+  // ausschließlich der Berliner Kalender – so stimmt die Erinnerung auch bei
+  // der Winterzeit sicher mit dem 6. Dezember überein.
+  if (now.month !== 12 || now.day !== 6) return;
+  const reminders = await env.DB.prepare("SELECT enabled, reminder_time, endpoint, last_sent_year FROM reminders WHERE partner = 'pia' AND enabled = 1").all<ReminderRow>();
+  await Promise.all(reminders.results.map(async (reminder) => {
+    if (!reminder.endpoint || reminder.reminder_time !== now.time || reminder.last_sent_year === now.year) return;
+    const response = await sendPush(reminder.endpoint, env);
+    if (response.ok) {
+      await env.DB.prepare("UPDATE reminders SET last_sent_year = ?, updated_at = CURRENT_TIMESTAMP WHERE partner = 'pia'").bind(now.year).run();
+    } else if (response.status === 404 || response.status === 410) {
+      await env.DB.prepare("UPDATE reminders SET enabled = 0, endpoint = NULL, updated_at = CURRENT_TIMESTAMP WHERE partner = 'pia'").run();
+    } else {
+      console.error("Reminder push failed", response.status);
+    }
+  }));
+}
+
+async function sendPush(endpoint: string, env: Env) {
+  const audience = new URL(endpoint).origin;
+  const header = base64Url(JSON.stringify({ typ: "JWT", alg: "ES256" }));
+  const payload = base64Url(JSON.stringify({ aud: audience, exp: Math.floor(Date.now() / 1000) + 12 * 60 * 60, sub: "mailto:pia-und-paul@adventskalender.local" }));
+  const signingInput = `${header}.${payload}`;
+  const key = await crypto.subtle.importKey("jwk", JSON.parse(env.VAPID_PRIVATE_JWK || "{}"), { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+  const signature = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(signingInput));
+  const token = `${signingInput}.${base64Url(signature)}`;
+  return fetch(endpoint, { method: "POST", headers: { Authorization: `vapid t=${token}, k=${env.VAPID_PUBLIC_KEY}`, TTL: "86400", Urgency: "high" } });
+}
+
 async function getCalendar(env: Env) {
   const columns = isTestEnvironment(env) ? "id, access_code_hash, recovery_code_hash, setup_complete, season_year, test_day" : "id, access_code_hash, recovery_code_hash, setup_complete, season_year";
   return env.DB.prepare(`SELECT ${columns} FROM calendar WHERE id = 1`).first<Calendar>();
@@ -305,10 +376,16 @@ function berlinDate() {
   const values = Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, Number(part.value)]));
   return { year: values.year, month: values.month, day: values.day };
 }
+function berlinClock() {
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Berlin", year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts();
+  const values = Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, Number(part.value)]));
+  return { year: values.year, month: values.month, day: values.day, time: `${String(values.hour).padStart(2, "0")}:${String(values.minute).padStart(2, "0")}` };
+}
 function currentYear() { return berlinDate().year; }
 function isTestEnvironment(env: Env) { return env.TEST_MODE === "true"; }
 function otherPartner(partner: Partner): Partner { return partner === "pia" ? "paul" : "pia"; }
 function isPartner(value: unknown): value is Partner { return value === "pia" || value === "paul"; }
+function isPushEndpoint(value: unknown): value is string { try { return typeof value === "string" && new URL(value).protocol === "https:"; } catch { return false; } }
 function isAnswerKind(value: unknown): value is AnswerKind { return typeof value === "string" && ANSWER_KINDS.includes(value as AnswerKind); }
 function json(body: unknown, status = 200) { return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS }); }
 function corsHeaders(request: Request) { return { "access-control-allow-origin": request.headers.get("Origin") ?? "*", "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS", "access-control-allow-headers": "Authorization, Content-Type", vary: "Origin" }; }
@@ -323,3 +400,7 @@ async function withCors(response: Response, request: Request) {
 }
 async function sha256(value: string) { const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)); return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join(""); }
 function randomToken() { const bytes = crypto.getRandomValues(new Uint8Array(32)); return btoa(String.fromCharCode(...bytes)).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", ""); }
+function base64Url(value: string | ArrayBuffer) {
+  const bytes = typeof value === "string" ? new TextEncoder().encode(value) : new Uint8Array(value);
+  return btoa(String.fromCharCode(...bytes)).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+}

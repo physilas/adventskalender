@@ -2,6 +2,12 @@ name = "adventskalender"
 main = "pia-und-paul-github/worker/index.ts"
 compatibility_date = "2026-10-03"
 
+[vars]
+VAPID_PUBLIC_KEY = "BKh5SZcK3eh-5C1l0C1X6Qjy_mYBtDGx6O3mkfcYHUleD8VDUZ9Dh4Ez8Mg1XAYzIFyS9bBAHFHbXR-fCb1KjN8"
+
+[triggers]
+crons = ["* * 5,6 12 *"]
+
 [[d1_databases]]
 binding = "DB"
 database_name = "pia-und-paul-adventskalender"
