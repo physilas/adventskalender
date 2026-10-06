@@ -1,6 +1,6 @@
 {
-  "name": "Pia & Paul · Adventskalender",
-  "short_name": "Pia & Paul",
+  "name": "Adventskalender",
+  "short_name": "Adventskalender",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#061523",

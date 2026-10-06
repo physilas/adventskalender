@@ -1,6 +1,6 @@
 {
-  "name": "Pia & Paul · Adventskalender Test",
-  "short_name": "Pia & Paul Test",
+  "name": "Adventskalender Test",
+  "short_name": "Adventskalender Test",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#061523",
