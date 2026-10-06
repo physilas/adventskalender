@@ -332,6 +332,9 @@ body,
   cursor: grab;
   touch-action: none;
   user-select: none;
+  contain: layout paint;
+  transform: translateZ(0);
+  backface-visibility: hidden;
   will-change: transform;
 }
 .ranking-row:focus-visible { outline: 3px solid #7db8d0; outline-offset: 2px; }
