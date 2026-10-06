@@ -282,6 +282,7 @@ body,
   gap: .8rem;
 }
 .ranking-card {
+  position: relative;
   display: grid;
   gap: .45rem;
   padding: .55rem;
@@ -289,6 +290,7 @@ body,
   border-radius: .8rem;
   color: #16384f;
   background: #f8fcfd;
+  will-change: transform;
 }
 .ranking-card img {
   width: 100%;
@@ -296,7 +298,26 @@ body,
   border-radius: .55rem;
   object-fit: cover;
 }
-.ranking-card span { color: #16384f; font-family: Arial, Helvetica, sans-serif; font-size: .82rem; font-weight: 700; }
+.ranking-card[data-ranking-id="pfingstrosen"] img,
+.ranking-card[data-ranking-id="trockenblumen"] img { object-position: center 22%; }
+.ranking-card-place {
+  position: absolute;
+  z-index: 1;
+  top: .8rem;
+  left: .8rem;
+  display: grid;
+  width: 1.65rem;
+  height: 1.65rem;
+  place-items: center;
+  border-radius: 999px;
+  color: #fff;
+  background: #245b7c;
+  box-shadow: 0 2px 6px rgb(10 45 69 / .28);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: .76rem;
+  font-weight: 800;
+}
+.ranking-card > span:last-child { color: #16384f; font-family: Arial, Helvetica, sans-serif; font-size: .82rem; font-weight: 700; }
 .ranking-list { display: grid; gap: .5rem; }
 .ranking-row {
   display: grid;
