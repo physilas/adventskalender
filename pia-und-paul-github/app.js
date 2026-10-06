@@ -12,10 +12,10 @@ const piaHouseRanking = [
   { id: "tropenhaus", word: "Tropisch", label: "Das tropische Haus mit Hängematte", image: "https://unsplash.com/photos/rpwWARDyQy0/download?force=true&w=900" },
 ];
 const paulFlowerRanking = [
-  { id: "pastellstrauss", label: "Der pastellfarbene Strauß", image: "https://unsplash.com/photos/K5aPU3Sp7UE/download?force=true&w=900" },
-  { id: "wildblumenstrauss", label: "Der Wildblumenstrauß", image: "https://unsplash.com/photos/ha0D2ocbHaw/download?force=true&w=900" },
-  { id: "papierstrauss", label: "Der Strauß im Papier", image: "https://unsplash.com/photos/i2uepvI1jHc/download?force=true&w=900" },
-  { id: "weissgruen", label: "Der weiß-grüne Strauß", image: "https://unsplash.com/photos/UQl_-yabQiA/download?force=true&w=900" },
+  { id: "apricot", label: "Apricot", image: "https://images.pexels.com/photos/6479557/pexels-photo-6479557.jpeg?auto=compress&cs=tinysrgb&w=900" },
+  { id: "wildblumen", label: "Wildblumen", image: "https://images.pexels.com/photos/36526032/pexels-photo-36526032.jpeg?auto=compress&cs=tinysrgb&w=900" },
+  { id: "trockenblumen", label: "Trockenblumen", image: "https://images.pexels.com/photos/11794585/pexels-photo-11794585.jpeg?auto=compress&cs=tinysrgb&w=900" },
+  { id: "pfingstrosen", label: "Pfingstrosen", image: "https://images.pexels.com/photos/12615496/pexels-photo-12615496.jpeg?auto=compress&cs=tinysrgb&w=900" },
 ];
 const prompts = {
   pia: [
@@ -405,7 +405,7 @@ function renderDrawingEditor(prompt, old) {
 function renderRankingEditor(prompt, old) {
   const savedOrder = rankingOrder(old.content || "");
   const orderedOptions = savedOrder.length === prompt.options.length ? savedOrder.map((id) => prompt.options.find((option) => option.id === id)).filter(Boolean) : prompt.options;
-  const noun = prompt.options[0]?.id === "pastellstrauss" ? "Blumensträuße" : "Häuser";
+  const noun = prompt.options[0]?.id === "apricot" ? "Blumensträuße" : "Häuser";
   return `<form class="answer-form ranking-form" id="answer-form"><fieldset><legend>Die ${noun}</legend><div class="ranking-grid">${prompt.options.map((option) => `<article class="ranking-card"><img src="${escape(option.image)}" alt="${escape(option.label)}"><span>${escape(option.label)}</span></article>`).join("")}</div></fieldset><fieldset><legend>Deine mögliche Reihenfolge</legend><div class="ranking-list" id="ranking-list" aria-label="Ranking per Ziehen sortieren">${orderedOptions.map((option, index) => `<div class="ranking-row" data-ranking-id="${escape(option.id)}" tabindex="0"><span class="ranking-grip" aria-hidden="true">⠿</span><span class="ranking-place">${index + 1}</span><span class="ranking-label">${escape(option.label)}</span></div>`).join("")}</div></fieldset><p class="field-hint">Ziehe eine Zeile an den Griffpunkten nach oben oder unten. Oben ist Platz 1.</p><button class="primary-button">Ranking speichern</button></form>`;
 }
 
