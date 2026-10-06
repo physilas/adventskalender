@@ -64,7 +64,7 @@ const prompts = {
     question("text", "Nenne drei Dinge, für die du mit Pia im nächsten Jahr gerne beten möchtest."),
     question("ranking", "In welchem dieser Häuser würde Pia am liebsten wohnen?", piaHouseRanking, "Sortiere die Häuser: Oben ist Platz 1."),
     question("text", "Ich muss gestehen, dass ich seit wir verheiratet sind, …"),
-    question("link", "Schick Pia ein Meme, das sie zum Lachen bringen soll."),
+    question("meme", "Schick Pia ein Meme, das sie zum Lachen bringen soll.", [], "Wähle aus, ob ein Link oder ein Foto besser passt."),
     question("map", "Markiere den Ort, an dem ihr euch besonders nah gefühlt habt."),
     question("audio", "Imitiere Pia liebevoll, wenn sie sich über etwas ganz Alltägliches aufregt."),
     question("text", "Gib eurer Ehe einen Slogan oder Filmtitel."),
@@ -126,7 +126,7 @@ function lockedQuip(day, partner, year) {
   return quips[(position + offset) % quips.length];
 }
 function configureMessage() { return `<main class="welcome-shell"><section class="welcome-card"><div class="heart-mark">♥</div><p class="eyebrow">Fast geschafft</p><h1>Die Verbindung fehlt noch.</h1><p class="intro">Trage zuerst die Adresse eures Cloudflare-Workers in <code>config.js</code> ein.</p></section></main>`; }
-function kindLabel(kind) { return ({ text: "Text", choice: "Auswahl", "choice-custom": "Auswahl", ranking: "Ranking", image: "Foto", audio: "Sprachnachricht", drawing: "Zeichnung", "drawing-riddle": "Zeichenrätsel", map: "Ort", link: "Link", offline: "Ganz in echt", gift: "Überraschung" })[kind] || "Antwort"; }
+function kindLabel(kind) { return ({ text: "Text", choice: "Auswahl", "choice-custom": "Auswahl", ranking: "Ranking", image: "Foto", audio: "Sprachnachricht", drawing: "Zeichnung", "drawing-riddle": "Zeichenrätsel", map: "Ort", link: "Link", meme: "Meme", offline: "Ganz in echt", gift: "Überraschung" })[kind] || "Antwort"; }
 function mediaKey(answer) { return answer?.payload?.mediaKey || ""; }
 function seededValue(seed) { return Math.abs(Math.sin(seed * 127.1 + 311.7) * 43758.5453) % 1; }
 function triangularFourier(value, modes = 9) {
@@ -364,7 +364,7 @@ function renderWorkshop(message = "") {
   const isOffline = prompt.kind === "offline";
   const canRetract = state.withdrawableDays?.includes(selectedWorkshopDay);
   const retractControl = answer ? canRetract ? `<button type="button" class="retract-button" id="retract-answer">Antwort zurückziehen</button>` : `<p class="retract-note">Diese Antwort wurde schon geöffnet und bleibt deshalb als Überraschung erhalten.</p>` : "";
-  const detail = `<article class="door-detail workshop-detail"><button class="modal-close" type="button" aria-label="Werkstatt-Türchen schließen">×</button><div class="detail-top"><p class="eyebrow">Werkstatt · Türchen ${selectedWorkshopDay}</p><span class="status-pill">${isGift ? "✓ vorbereitet" : isOffline ? "✓ ganz in echt" : answer ? "✓ vorbereitet" : selectedWorkshopDay < today ? "! nachholen" : "✦ frei gestaltbar"}</span></div>${isGift ? renderGiftCopy() : isOffline ? renderOfflineWorkshopCopy(prompt, other(session.partner)) : `<p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${prompt.hint ? `<p class="prompt-hint">${escape(prompt.hint)}</p>` : ""}${renderEditor(prompt, answer)}${retractControl}${message ? `<p class="save-message">${escape(message)}</p>` : ""}`}</article>`;
+  const detail = `<article class="door-detail workshop-detail"><button class="modal-close" type="button" aria-label="Werkstatt-Türchen schließen">×</button><div class="detail-top"><p class="eyebrow workshop-detail-title"><span>Werkstatt</span><span>Türchen ${selectedWorkshopDay}</span></p><span class="status-pill">${isGift ? "✓ vorbereitet" : isOffline ? "✓ ganz in echt" : answer ? "✓ vorbereitet" : selectedWorkshopDay < today ? "! nachholen" : "✦ frei gestaltbar"}</span></div>${isGift ? renderGiftCopy() : isOffline ? renderOfflineWorkshopCopy(prompt, other(session.partner)) : `<p class="answer-kind">${kindLabel(prompt.kind)}</p><h2>${escape(prompt.prompt)}</h2>${prompt.hint ? `<p class="prompt-hint">${escape(prompt.hint)}</p>` : ""}${renderEditor(prompt, answer)}${retractControl}${message ? `<p class="save-message">${escape(message)}</p>` : ""}`}</article>`;
   const modal = workshopDetailOpen ? `<section class="workshop-modal" role="dialog" aria-modal="true" aria-label="Werkstatt-Türchen ${selectedWorkshopDay}">${detail}</section>` : "";
   return `<section class="calendar-layout workshop-layout"><nav class="door-grid" aria-label="Deine Werkstatt-Türchen">${doors}</nav></section>${modal}<p class="legend workshop-legend"><span class="legend-complete">✓</span> vorbereitet <span class="legend-missing">!</span> nachholen <span class="legend-today">•</span> heute</p>`;
 }
@@ -386,11 +386,12 @@ function renderEditor(prompt, answer) {
   if (prompt.kind === "choice-custom") return `<form class="answer-form" id="answer-form"><fieldset class="choice-list"><legend>Deine Date-Idee für ${name(other(state.session.partner))}</legend>${prompt.options.map((option) => `<label class="choice-option"><input type="radio" name="choice" value="${escape(option)}" ${prompt.options.includes(old.content) ? old.content === option ? "checked" : "" : option === "Eigene Date-Idee" ? "checked" : ""}><span>${escape(option)}</span></label>`).join("")}</fieldset><label for="choice-custom">Oder deine eigene Idee</label><input class="answer-input" id="choice-custom" maxlength="240" placeholder="Zum Beispiel: Plätzchen backen und verschenken" value="${escape(prompt.options.includes(old.content) ? "" : old.content || "")}"><button class="primary-button">Antwort speichern</button></form>`;
   if (prompt.kind === "ranking") return renderRankingEditor(prompt, old);
   if (prompt.kind === "link") return `<form class="answer-form" id="answer-form"><label for="answer">Link für ${name(other(state.session.partner))}</label><input class="answer-input" id="answer" type="url" placeholder="https://…" value="${escape(old.content || "")}" required><p class="field-hint">Spotify, YouTube, Mediathek oder jeder andere Link – ohne Konto-Verknüpfung.</p><button class="primary-button">Link speichern</button></form>`;
+  if (prompt.kind === "meme") return renderMemeEditor(old);
   if (prompt.kind === "image") return renderMediaEditor("image", old, "Foto auswählen", "Ein neues Foto ersetzt das bisherige.");
   if (prompt.kind === "audio") return renderMediaEditor("audio", old, "Audiodatei auswählen", "Oder nimm direkt hier eine kurze Nachricht auf.");
   if (prompt.kind === "drawing" || prompt.kind === "drawing-riddle") return renderDrawingEditor(prompt, old);
   if (prompt.kind === "map") {
-    const location = old.payload || { lat: 52.52, lng: 13.405, label: "" };
+    const location = old.payload || { lat: 48.137, lng: 11.575, label: "" };
     return `<form class="answer-form" id="answer-form"><label for="place-label">Wie möchtest du diesen Ort nennen?</label><input class="answer-input" id="place-label" maxlength="200" placeholder="Zum Beispiel: Unser Lieblingscafé" value="${escape(location.label || "")}" required><div class="map-search"><input class="answer-input" id="map-search" type="search" placeholder="Ort oder Adresse suchen"><button type="button" class="quiet-button" id="search-map">Suchen</button></div><div id="map-search-results" class="map-search-results" aria-live="polite"></div><div id="map-picker" class="map-picker"></div><p class="field-hint" id="map-coordinates">Tippe auf die Karte, um den Ort festzulegen.</p><button type="button" class="quiet-button locate-button" id="locate-me">Meinen aktuellen Standort verwenden</button><button class="primary-button">Ort speichern</button></form>`;
   }
   return "";
@@ -400,6 +401,12 @@ function renderDrawingEditor(prompt, old) {
   const isRiddle = prompt.kind === "drawing-riddle";
   const solution = old.payload?.solution || "";
   return `<form class="answer-form" id="answer-form"><label>Deine Zeichnung für ${name(other(state.session.partner))}</label>${old.payload?.mediaKey ? `<div class="existing-media" data-media-kind="image" data-media-key="${escape(old.payload.mediaKey)}">Bisherige Zeichnung wird geladen …</div>` : ""}<canvas id="drawing-canvas" width="900" height="560" aria-label="Zeichenfläche"></canvas><div class="draw-tools"><div class="draw-palette" aria-label="Stiftfarbe wählen"><button type="button" class="color-swatch selected" data-color="#941f42" style="--swatch:#941f42" aria-label="Rot"></button><button type="button" class="color-swatch" data-color="#e8b65e" style="--swatch:#e8b65e" aria-label="Gelb"></button><button type="button" class="color-swatch" data-color="#4d8560" style="--swatch:#4d8560" aria-label="Grün"></button><button type="button" class="color-swatch" data-color="#a7d8a5" style="--swatch:#a7d8a5" aria-label="Hellgrün"></button><button type="button" class="color-swatch" data-color="#3f6cae" style="--swatch:#3f6cae" aria-label="Blau"></button><button type="button" class="color-swatch" data-color="#91cde2" style="--swatch:#91cde2" aria-label="Hellblau"></button><button type="button" class="color-swatch" data-color="#8b9199" style="--swatch:#8b9199" aria-label="Grau"></button><button type="button" class="color-swatch" data-color="#261923" style="--swatch:#261923" aria-label="Schwarz"></button><button type="button" class="color-swatch white" data-color="#fffaf5" style="--swatch:#fffaf5" aria-label="Weiß"></button><button type="button" class="color-swatch" data-color="#e7b98d" style="--swatch:#e7b98d" aria-label="Hautfarbe"></button><button type="button" class="color-swatch" data-color="#b77b52" style="--swatch:#b77b52" aria-label="Hellbraun"></button><button type="button" class="eraser-button" id="eraser" aria-label="Radierer">⌫</button></div><label class="brush-size" for="brush-size">Größe <input id="brush-size" type="range" min="3" max="40" value="9"><output id="brush-size-value">9</output></label><button type="button" class="quiet-button" id="clear-drawing">Zeichnung löschen</button></div>${isRiddle ? `<label for="riddle-solution">Was ist es? (Paul sieht die Lösung erst nach einem richtigen Tipp.)</label><input class="answer-input" id="riddle-solution" maxlength="240" value="${escape(solution)}" placeholder="Zum Beispiel: unser Toaster" required>` : ""}<p class="field-hint">Mit dem Finger oder der Maus malen. Die Größe gilt auch für den Radierer.</p><button class="primary-button">Zeichnung speichern</button></form>`;
+}
+
+function renderMemeEditor(old) {
+  const mode = old.kind === "image" ? "image" : "link";
+  const previous = old.kind === "image" && old.payload?.mediaKey ? `<div class="existing-media" data-media-kind="image" data-media-key="${escape(old.payload.mediaKey)}">Bisheriges Meme wird geladen …</div>` : "";
+  return `<form class="answer-form meme-form" id="answer-form"><fieldset class="choice-list"><legend>Wie möchtest du Pia dein Meme schicken?</legend><label class="choice-option"><input type="radio" name="meme-kind" value="link" ${mode === "link" ? "checked" : ""}><span>Einen Link schicken</span></label><label class="choice-option"><input type="radio" name="meme-kind" value="image" ${mode === "image" ? "checked" : ""}><span>Ein Foto hochladen</span></label></fieldset><div data-meme-editor="link" ${mode === "image" ? "hidden" : ""}><label for="meme-link">Meme-Link</label><input class="answer-input" id="meme-link" type="url" placeholder="https://…" value="${escape(old.kind === "link" ? old.content || "" : "")}"></div><div data-meme-editor="image" ${mode === "link" ? "hidden" : ""}><label for="media-file">Meme-Foto auswählen</label>${previous}<input class="file-input" id="media-file" type="file" accept="image/*"><div id="upload-preview" class="upload-preview" hidden></div><p class="field-hint">Dein Foto wird vor dem Upload automatisch verkleinert und komprimiert.</p></div><p class="field-hint">Wähle einfach das Format, das zu deinem Meme besser passt.</p><button class="primary-button">Meme speichern</button></form>`;
 }
 
 function renderRankingEditor(prompt, old) {
@@ -447,6 +454,7 @@ function bindWorkshop() {
   if (prompt.kind === "drawing" || prompt.kind === "drawing-riddle") setupDrawing();
   if (prompt.kind === "map") setupMap(answer?.payload);
   if (prompt.kind === "image") setupPhotoPreview();
+  if (prompt.kind === "meme") setupMemeEditor();
   if (prompt.kind === "ranking") setupRankingSort();
   document.querySelector("#retract-answer")?.addEventListener("click", async () => {
     if (!window.confirm("Antwort wirklich zurückziehen? Sie wird wieder als unbearbeitet angezeigt.")) return;
@@ -469,6 +477,7 @@ function bindWorkshop() {
 async function saveWorkshopAnswer(prompt, previous) {
   let content = "";
   let payload = null;
+  let answerKind = prompt.kind;
   if (prompt.kind === "text" || prompt.kind === "link") content = document.querySelector("#answer").value;
   if (prompt.kind === "choice") content = document.querySelector('input[name="choice"]:checked')?.value || "";
   if (prompt.kind === "choice-custom") {
@@ -478,9 +487,26 @@ async function saveWorkshopAnswer(prompt, previous) {
     if (!content) throw new Error("Bitte wähle eine Date-Idee oder schreib deine eigene auf.");
   }
   if (prompt.kind === "ranking") {
-    const ranked = [...document.querySelectorAll("[data-ranking-id]")].map((row) => row.dataset.rankingId);
+    const ranked = [...document.querySelectorAll("#ranking-list [data-ranking-id]")].map((row) => row.dataset.rankingId);
     if (ranked.length !== 4 || new Set(ranked).size !== 4) throw new Error("Das Ranking braucht vier unterschiedliche Häuser.");
     content = JSON.stringify(ranked);
+  }
+  if (prompt.kind === "meme") {
+    const format = document.querySelector('input[name="meme-kind"]:checked')?.value;
+    if (format === "link") {
+      content = document.querySelector("#meme-link").value.trim();
+      try { const url = new URL(content); if (!["https:", "http:"].includes(url.protocol)) throw new Error(); }
+      catch { throw new Error("Bitte füge einen gültigen Link zu deinem Meme ein."); }
+      answerKind = "link";
+    } else {
+      let file = document.querySelector("#media-file")?.files?.[0] || null;
+      if (file) file = await compressPhoto(file);
+      if (file) payload = await uploadMedia(file, "image");
+      else if (previous?.kind === "image" && previous?.payload?.mediaKey) payload = previous.payload;
+      else throw new Error("Bitte wähle ein Meme-Foto aus oder schicke stattdessen einen Link.");
+      content = "Ein Meme";
+      answerKind = "image";
+    }
   }
   if (prompt.kind === "map") {
     if (!mapLocation) throw new Error("Bitte wähle einen Punkt auf der Karte.");
@@ -503,7 +529,14 @@ async function saveWorkshopAnswer(prompt, previous) {
     }
     content = prompt.kind === "audio" ? "Eine Sprachnachricht" : ["drawing", "drawing-riddle"].includes(prompt.kind) ? "Eine Zeichnung" : "Ein Foto";
   }
-  return api("/api/answers", { method: "PUT", body: JSON.stringify({ day: selectedWorkshopDay, kind: prompt.kind, content, payload }) });
+  return api("/api/answers", { method: "PUT", body: JSON.stringify({ day: selectedWorkshopDay, kind: answerKind, content, payload }) });
+}
+
+function setupMemeEditor() {
+  const editors = [...document.querySelectorAll("[data-meme-editor]")];
+  const showEditor = (kind) => editors.forEach((editor) => { editor.hidden = editor.dataset.memeEditor !== kind; });
+  document.querySelectorAll('input[name="meme-kind"]').forEach((input) => input.addEventListener("change", () => showEditor(input.value)));
+  setupPhotoPreview();
 }
 
 function setupRiddleGuess() {
@@ -756,8 +789,8 @@ function setupMap(savedLocation) {
     coordinateCopy.textContent = "Die Kartenansicht konnte nicht geladen werden. Bitte versuche es mit einer Internetverbindung erneut.";
     return;
   }
-  const initial = mapLocation || { lat: 52.52, lng: 13.405 };
-  mapPicker = window.L.map(element).setView([initial.lat, initial.lng], mapLocation ? 14 : 5);
+  const initial = mapLocation || { lat: 48.137, lng: 11.575 };
+  mapPicker = window.L.map(element).setView([initial.lat, initial.lng], mapLocation ? 14 : 7);
   window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap-Mitwirkende" }).addTo(mapPicker);
   let marker = null;
   const setMarker = (latlng) => {
