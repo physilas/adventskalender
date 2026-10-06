@@ -6,10 +6,10 @@ const app = document.querySelector("#app");
 const days = Array.from({ length: 24 }, (_, index) => index + 1);
 const question = (kind, prompt, options = [], hint = "") => ({ kind, prompt, options, hint });
 const piaHouseRanking = [
-  { id: "moderneshaus", word: "Modern", label: "Das moderne Haus am Pool", image: "https://unsplash.com/photos/mmuGuSv208c/download?force=true&w=900" },
-  { id: "reetdach", word: "Reetdach", label: "Das reetgedeckte Landhaus", image: "https://images.unsplash.com/photo-1682516086739-c3fbf844529b?auto=format&fit=crop&w=900&q=82" },
-  { id: "steinhaus", word: "Steingarten", label: "Das Steinhäuschen mit wildem Garten", image: "https://images.unsplash.com/photo-1688396538097-af54bb314ab6?auto=format&fit=crop&w=900&q=82" },
-  { id: "tropenhaus", word: "Tropisch", label: "Das tropische Haus mit Hängematte", image: "https://unsplash.com/photos/rpwWARDyQy0/download?force=true&w=900" },
+  { id: "almhuette", word: "Alpen", label: "Almhütte", image: "https://images.pexels.com/photos/34015823/pexels-photo-34015823.jpeg?auto=compress&cs=tinysrgb&w=900" },
+  { id: "moderneshaus", word: "Modern", label: "Modernes Haus", image: "https://images.pexels.com/photos/9976121/pexels-photo-9976121.jpeg?auto=compress&cs=tinysrgb&w=900" },
+  { id: "blauescottage", word: "Cottage", label: "Blaues Cottage", image: "https://images.pexels.com/photos/8189146/pexels-photo-8189146.jpeg?auto=compress&cs=tinysrgb&w=900" },
+  { id: "reetdachhaus", word: "Reetdach", label: "Reetdachhaus", image: "https://images.pexels.com/photos/32403148/pexels-photo-32403148.jpeg?auto=compress&cs=tinysrgb&w=900" },
 ];
 const paulFlowerRanking = [
   { id: "apricot", label: "Apricot", image: "https://images.pexels.com/photos/6479557/pexels-photo-6479557.jpeg?auto=compress&cs=tinysrgb&w=900" },
