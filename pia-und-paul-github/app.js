@@ -486,7 +486,7 @@ function renderOfflineCalendarCopy(prompt) { return `<section class="gift-copy o
 
 function renderEditor(prompt, answer) {
   const old = answer || {};
-  if (prompt.kind === "text") return `<form class="answer-form" id="answer-form"><label for="answer">Deine Antwort für ${name(other(state.session.partner))}</label><textarea id="answer" maxlength="2000" placeholder="Schreib, was dir gerade im Herzen liegt …" required>${escape(old.content || "")}</textarea><div class="answer-footer"><span id="count">${(old.content || "").length}/2000</span><button class="primary-button">Antwort speichern</button></div></form>`;
+  if (prompt.kind === "text") { const length = (old.content || "").length; return `<form class="answer-form" id="answer-form"><label for="answer">Deine Antwort für ${name(other(state.session.partner))}</label><textarea id="answer" maxlength="2000" placeholder="Schreib, was dir gerade im Herzen liegt …" required>${escape(old.content || "")}</textarea><div class="answer-footer"><span id="count" aria-live="polite" ${length < 1800 ? "hidden" : ""}>${length}/2000 Zeichen</span><button class="primary-button">Antwort speichern</button></div></form>`; }
   if (prompt.kind === "choice") return `<form class="answer-form" id="answer-form"><fieldset class="choice-list"><legend>Deine Wahl für ${name(other(state.session.partner))}</legend>${prompt.options.map((option) => `<label class="choice-option"><input type="radio" name="choice" value="${escape(option)}" ${old.content === option ? "checked" : ""} required><span>${escape(option)}</span></label>`).join("")}</fieldset><button class="primary-button">Antwort speichern</button></form>`;
   if (prompt.kind === "choice-custom") return `<form class="answer-form" id="answer-form"><fieldset class="choice-list"><legend>Deine Date-Idee für ${name(other(state.session.partner))}</legend>${prompt.options.map((option) => `<label class="choice-option"><input type="radio" name="choice" value="${escape(option)}" ${prompt.options.includes(old.content) ? old.content === option ? "checked" : "" : option === "Eigene Date-Idee" ? "checked" : ""}><span>${escape(option)}</span></label>`).join("")}</fieldset><label for="choice-custom">Oder deine eigene Idee</label><input class="answer-input" id="choice-custom" maxlength="240" placeholder="Zum Beispiel: Plätzchen backen und verschenken" value="${escape(prompt.options.includes(old.content) ? "" : old.content || "")}"><button class="primary-button">Antwort speichern</button></form>`;
   if (prompt.kind === "ranking") return renderRankingEditor(prompt, old);
@@ -536,7 +536,12 @@ function bindWorkshop() {
   const prompt = prompts[state.session.partner][selectedWorkshopDay - 1];
   const answer = state.ownAnswers[selectedWorkshopDay];
   const textarea = document.querySelector("#answer");
-  if (textarea?.tagName === "TEXTAREA") textarea.addEventListener("input", () => document.querySelector("#count").textContent = `${textarea.value.length}/2000`);
+  if (textarea?.tagName === "TEXTAREA") textarea.addEventListener("input", () => {
+    const count = document.querySelector("#count");
+    if (!count) return;
+    count.textContent = `${textarea.value.length}/2000 Zeichen`;
+    count.hidden = textarea.value.length < 1800;
+  });
   const form = document.querySelector("#answer-form");
   if (form) form.addEventListener("submit", async (event) => {
     event.preventDefault();
