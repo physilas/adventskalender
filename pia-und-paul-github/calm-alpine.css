@@ -21,6 +21,9 @@ body,
   background-attachment: fixed;
 }
 
+#app:not(.loading) { display: block; width: 100%; min-width: 0; background: transparent; }
+.app-shell, .welcome-shell { width: 100%; min-width: 0; }
+
 .welcome-shell {
   background-image:
     linear-gradient(180deg, #03102173 0%, #061523b8 100%),
@@ -409,7 +412,20 @@ body,
 .reminder-settings .note-label { margin: 0; }
 .reminder-settings .field-hint { margin: 0; }
 .reminder-settings .choice-option { background: #fff; }
-.reminder-settings .answer-input { margin-top: .15rem; }
+.reminder-settings { grid-template-columns: minmax(0, 1fr); min-width: 0; max-width: 100%; }
+.reminder-settings > * { min-width: 0; }
+.reminder-settings .answer-input {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  margin-top: .15rem;
+  -webkit-appearance: none;
+  appearance: none;
+  font-size: 1rem;
+}
+.reminder-settings input[type="time"]::-webkit-date-and-time-value { min-width: 0; text-align: left; }
 .retract-button {
   justify-self: start;
   margin-top: .35rem;

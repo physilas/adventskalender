@@ -176,6 +176,8 @@ async function api(path, options = {}) {
 }
 
 async function load() {
+  // The loading grid must not keep centering/shrinking the rendered app.
+  app.classList.remove("loading");
   if (!API) { app.innerHTML = configureMessage(); return; }
   try {
     state = await api("/api/calendar");
