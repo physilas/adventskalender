@@ -160,6 +160,24 @@ body,
 .door.workshop-door.upcoming,
 .door.locked { background: linear-gradient(180deg, #dceff5 0%, #9bc5d6 100%); }
 .door.active { border-color: #245b7c !important; background: linear-gradient(180deg, #91cddd 0%, #2e6d91 100%) !important; box-shadow: 0 0 0 2px #d9edf3 !important; }
+.calendar-door.locked {
+  color: #6d7f89;
+  border-color: #aebec5;
+  background: linear-gradient(180deg, #dce5e8 0%, #acbbc1 100%) !important;
+  opacity: .62;
+  filter: saturate(.22);
+}
+.calendar-door.locked.active {
+  color: #647985 !important;
+  border-color: #8da8b4 !important;
+  background: linear-gradient(180deg, #d6e1e5 0%, #a6b7be 100%) !important;
+  box-shadow: 0 0 0 2px #d8e4e8 !important;
+  opacity: .76;
+}
+.calendar-door.locked.active > span {
+  color: #607985;
+  text-shadow: none;
+}
 
 .mountain-range { height: 77%; opacity: 1; }
 .door .mountain-range {
