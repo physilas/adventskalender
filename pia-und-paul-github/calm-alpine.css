@@ -161,21 +161,21 @@ body,
 .door.locked { background: linear-gradient(180deg, #dceff5 0%, #9bc5d6 100%); }
 .door.active { border-color: #245b7c !important; background: linear-gradient(180deg, #91cddd 0%, #2e6d91 100%) !important; box-shadow: 0 0 0 2px #d9edf3 !important; }
 .calendar-door.locked {
-  color: #6d7f89;
-  border-color: #aebec5;
-  background: linear-gradient(180deg, #dce5e8 0%, #acbbc1 100%) !important;
-  opacity: .62;
-  filter: saturate(.22);
+  color: #62808f;
+  border-color: #a1bac4;
+  background: linear-gradient(180deg, #d9e9ef 0%, #9dbdca 100%) !important;
+  opacity: .78;
+  filter: saturate(.52);
 }
 .calendar-door.locked.active {
-  color: #647985 !important;
-  border-color: #8da8b4 !important;
-  background: linear-gradient(180deg, #d6e1e5 0%, #a6b7be 100%) !important;
-  box-shadow: 0 0 0 2px #d8e4e8 !important;
-  opacity: .76;
+  color: #56788a !important;
+  border-color: #80a8b8 !important;
+  background: linear-gradient(180deg, #d1e6ee 0%, #91b5c4 100%) !important;
+  box-shadow: 0 0 0 2px #d2e4ea !important;
+  opacity: .84;
 }
 .calendar-door.locked.active > span {
-  color: #607985;
+  color: #4e7183;
   text-shadow: none;
 }
 
