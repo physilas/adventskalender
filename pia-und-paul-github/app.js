@@ -99,12 +99,23 @@ let recordingTimer = null;
 let mediaPreviewUrls = new Map();
 let drawingCanvas = null;
 let drawingDirty = false;
+let drawingNewAttempt = false;
+let pastedMemeFile = null;
+let appToast = "";
+let toastTimer = null;
 
 function other(partner) { return partner === "pia" ? "paul" : "pia"; }
 function name(partner) { return partner === "pia" ? "Pia" : "Paul"; }
 function escape(value = "") { return String(value).replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]); }
 function token() { return localStorage.getItem(TOKEN_STORAGE_KEY) || ""; }
 function adminToken() { return localStorage.getItem(ADMIN_TOKEN_STORAGE_KEY) || ""; }
+function renderToast() { return appToast ? `<div class="app-toast" role="status"><span>✓</span><strong>${escape(appToast)}</strong><button type="button" id="close-toast" aria-label="Hinweis schließen">×</button></div>` : ""; }
+function showToast(message) {
+  appToast = message;
+  clearTimeout(toastTimer);
+  renderApp();
+  toastTimer = setTimeout(() => { appToast = ""; if (state?.session) renderApp(); }, 4_500);
+}
 function giftAcknowledgementKey(partner) { return `${TEST_MODE ? "pia-paul-test" : "pia-paul"}-gift-acknowledged-${partner}`; }
 function hasAcknowledgedGift(partner) { return localStorage.getItem(giftAcknowledgementKey(partner)) === "yes"; }
 function shuffledDoorDays(partner, year) {
@@ -317,8 +328,9 @@ function renderApp(message = "") {
   const { session, status, seasonYear } = state;
   const heading = status.phase === "before" ? `Bereit für den 1. Dezember ${seasonYear}` : status.phase === "complete" ? "Alle Türchen sind offen" : `Dezember ${seasonYear}`;
   const developerControls = TEST_MODE ? renderDeveloperControls(status) : "";
-  app.innerHTML = `<main class="app-shell ${activeView === "calendar" ? "calendar-shell" : "workshop-shell"}"><header class="topbar"><div class="brand"><span class="mini-heart">♥</span><span>Pia <i>&</i> Paul</span></div><button class="quiet-button" id="signout">Abmelden</button></header><section class="hero-row"><div><p class="eyebrow">Adventskalender</p><h1>${heading}</h1></div><p class="hero-note">${activeView === "calendar" ? `Für dich: die kleinen Überraschungen von ${name(other(session.partner))}.` : `Deine Werkstatt: Bereite alle 24 Überraschungen für ${name(other(session.partner))} vor.`}</p></section><nav class="view-switch" aria-label="Bereich wählen"><button data-view="calendar" class="${activeView === "calendar" ? "selected" : ""}">♥ Dein Adventskalender</button><button data-view="workshop" class="${activeView === "workshop" ? "selected" : ""}">✦ Deine Werkstatt</button></nav>${developerControls}${activeView === "calendar" ? renderCalendar() : renderWorkshop(message)}</main>`;
+  app.innerHTML = `<main class="app-shell ${activeView === "calendar" ? "calendar-shell" : "workshop-shell"}"><header class="topbar"><div class="brand"><span class="mini-heart">♥</span><span>Pia <i>&</i> Paul</span></div><button class="quiet-button" id="signout">Abmelden</button></header><section class="hero-row"><div><p class="eyebrow">Adventskalender</p><h1>${heading}</h1></div><p class="hero-note">${activeView === "calendar" ? `Für dich: die kleinen Überraschungen von ${name(other(session.partner))}.` : `Deine Werkstatt: Bereite alle 24 Überraschungen für ${name(other(session.partner))} vor.`}</p></section><nav class="view-switch" aria-label="Bereich wählen"><button data-view="calendar" class="${activeView === "calendar" ? "selected" : ""}">♥ Dein Adventskalender</button><button data-view="workshop" class="${activeView === "workshop" ? "selected" : ""}">✦ Deine Werkstatt</button></nav>${developerControls}${activeView === "calendar" ? renderCalendar() : renderWorkshop(message)}</main>${renderToast()}`;
   document.querySelector("#signout").addEventListener("click", () => { localStorage.removeItem(TOKEN_STORAGE_KEY); state.session = null; render(); });
+  document.querySelector("#close-toast")?.addEventListener("click", () => { appToast = ""; clearTimeout(toastTimer); renderApp(); });
   document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => { activeView = button.dataset.view; calendarDetailOpen = false; workshopDetailOpen = false; renderApp(); }));
   bindDeveloperControls();
   if (activeView === "calendar") bindCalendar(); else bindWorkshop();
@@ -525,13 +537,14 @@ function renderEditor(prompt, answer) {
 function renderDrawingEditor(prompt, old) {
   const isRiddle = prompt.kind === "drawing-riddle";
   const solution = old.payload?.solution || "";
+  if (old.payload?.mediaKey && !drawingNewAttempt) return `<form class="answer-form drawing-saved"><label>Deine Zeichnung für ${name(other(state.session.partner))}</label><div class="existing-media" data-media-kind="image" data-media-key="${escape(old.payload.mediaKey)}">Deine gespeicherte Zeichnung wird geladen …</div>${isRiddle ? `<p class="field-hint">Lösung: ${escape(solution)}</p>` : ""}<p class="field-hint">Deine Zeichnung ist gespeichert und bereit für ${name(other(state.session.partner))}.</p><button type="button" class="quiet-button new-attempt-button" id="new-drawing">Neuer Versuch</button></form>`;
   return `<form class="answer-form" id="answer-form"><label>Deine Zeichnung für ${name(other(state.session.partner))}</label>${old.payload?.mediaKey ? `<div class="existing-media" data-media-kind="image" data-media-key="${escape(old.payload.mediaKey)}">Bisherige Zeichnung wird geladen …</div>` : ""}<canvas id="drawing-canvas" width="900" height="560" aria-label="Zeichenfläche"></canvas><div class="draw-tools"><div class="draw-palette" aria-label="Stiftfarbe wählen"><button type="button" class="color-swatch selected" data-color="#941f42" style="--swatch:#941f42" aria-label="Rot"></button><button type="button" class="color-swatch" data-color="#e8b65e" style="--swatch:#e8b65e" aria-label="Gelb"></button><button type="button" class="color-swatch" data-color="#4d8560" style="--swatch:#4d8560" aria-label="Grün"></button><button type="button" class="color-swatch" data-color="#a7d8a5" style="--swatch:#a7d8a5" aria-label="Hellgrün"></button><button type="button" class="color-swatch" data-color="#3f6cae" style="--swatch:#3f6cae" aria-label="Blau"></button><button type="button" class="color-swatch" data-color="#91cde2" style="--swatch:#91cde2" aria-label="Hellblau"></button><button type="button" class="color-swatch" data-color="#8b9199" style="--swatch:#8b9199" aria-label="Grau"></button><button type="button" class="color-swatch" data-color="#261923" style="--swatch:#261923" aria-label="Schwarz"></button><button type="button" class="color-swatch white" data-color="#fffaf5" style="--swatch:#fffaf5" aria-label="Weiß"></button><button type="button" class="color-swatch" data-color="#e7b98d" style="--swatch:#e7b98d" aria-label="Hautfarbe"></button><button type="button" class="color-swatch" data-color="#b77b52" style="--swatch:#b77b52" aria-label="Hellbraun"></button><button type="button" class="eraser-button" id="eraser" aria-label="Radierer">⌫</button></div><label class="brush-size" for="brush-size">Größe <input id="brush-size" type="range" min="3" max="40" value="9"><output id="brush-size-value">9</output></label><button type="button" class="quiet-button" id="clear-drawing">Zeichnung löschen</button></div>${isRiddle ? `<label for="riddle-solution">Was ist es? (Paul sieht die Lösung erst nach einem richtigen Tipp.)</label><input class="answer-input" id="riddle-solution" maxlength="240" value="${escape(solution)}" placeholder="Zum Beispiel: unser Toaster" required>` : ""}<p class="field-hint">Mit dem Finger oder der Maus malen. Die Größe gilt auch für den Radierer.</p><button class="primary-button">Zeichnung speichern</button></form>`;
 }
 
 function renderMemeEditor(old) {
   const mode = old.kind === "image" ? "image" : "link";
   const previous = old.kind === "image" && old.payload?.mediaKey ? `<div class="existing-media" data-media-kind="image" data-media-key="${escape(old.payload.mediaKey)}">Bisheriges Meme wird geladen …</div>` : "";
-  return `<form class="answer-form meme-form" id="answer-form"><fieldset class="choice-list"><legend>Wie möchtest du Pia dein Meme schicken?</legend><label class="choice-option"><input type="radio" name="meme-kind" value="link" ${mode === "link" ? "checked" : ""}><span>Einen Link schicken</span></label><label class="choice-option"><input type="radio" name="meme-kind" value="image" ${mode === "image" ? "checked" : ""}><span>Ein Foto hochladen</span></label></fieldset><div data-meme-editor="link" ${mode === "image" ? "hidden" : ""}><label for="meme-link">Meme-Link</label><input class="answer-input" id="meme-link" type="url" placeholder="https://…" value="${escape(old.kind === "link" ? old.content || "" : "")}"></div><div data-meme-editor="image" ${mode === "link" ? "hidden" : ""}><label for="media-file">Meme-Foto auswählen</label>${previous}<input class="file-input" id="media-file" type="file" accept="image/*"><div id="upload-preview" class="upload-preview" hidden></div><p class="field-hint">Dein Foto wird vor dem Upload automatisch verkleinert und komprimiert.</p></div><p class="field-hint">Wähle einfach das Format, das zu deinem Meme besser passt.</p><button class="primary-button">Meme speichern</button></form>`;
+  return `<form class="answer-form meme-form" id="answer-form"><fieldset class="choice-list"><legend>Wie möchtest du Pia dein Meme schicken?</legend><label class="choice-option"><input type="radio" name="meme-kind" value="link" ${mode === "link" ? "checked" : ""}><span>Einen Link schicken</span></label><label class="choice-option"><input type="radio" name="meme-kind" value="image" ${mode === "image" ? "checked" : ""}><span>Ein Foto hochladen</span></label><label class="choice-option"><input type="radio" name="meme-kind" value="clipboard"><span>Aus Zwischenablage einfügen</span></label></fieldset><div data-meme-editor="link" ${mode === "image" ? "hidden" : ""}><label for="meme-link">Meme-Link</label><input class="answer-input" id="meme-link" type="url" placeholder="https://…" value="${escape(old.kind === "link" ? old.content || "" : "")}"></div><div data-meme-editor="image" ${mode === "link" ? "hidden" : ""}><label for="media-file">Meme-Foto auswählen</label>${previous}<input class="file-input" id="media-file" type="file" accept="image/*"><div id="upload-preview" class="upload-preview" hidden></div><p class="field-hint">Dein Foto wird vor dem Upload automatisch verkleinert und komprimiert.</p></div><div data-meme-editor="clipboard" hidden><button type="button" class="quiet-button clipboard-button" id="paste-meme">Bild aus Zwischenablage einfügen</button><div id="clipboard-preview" class="upload-preview" hidden></div><p class="field-hint" id="clipboard-hint">Kopiere zuerst ein Bild, dann füge es hier ein.</p></div><p class="field-hint">Wähle einfach das Format, das zu deinem Meme besser passt.</p><button class="primary-button">Meme speichern</button></form>`;
 }
 
 function renderRankingEditor(prompt, old) {
@@ -544,14 +557,14 @@ function renderRankingEditor(prompt, old) {
 function renderMediaEditor(kind, old, label, hint) {
   const accept = kind === "audio" ? "audio/webm,audio/mp4,audio/mpeg,audio/ogg,audio/wav" : "image/*";
   const previous = old.payload?.mediaKey ? `<div class="existing-media" data-media-kind="${kind === "audio" ? "audio" : "image"}" data-media-key="${escape(old.payload.mediaKey)}">Bisheriger Beitrag wird geladen …</div>` : "";
-  const recorderUi = kind === "audio" ? `<div class="voice-recorder"><button type="button" class="record-button" id="record-audio" aria-label="Aufnahme starten">●</button><div><strong id="record-status">Zum Aufnehmen antippen</strong><span id="record-timer">0:00</span></div><div class="voice-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div></div><div id="audio-preview" class="audio-preview" hidden></div>` : "";
+  const recorderUi = kind === "audio" ? `<div class="voice-recorder"><button type="button" class="record-button" id="record-audio" aria-label="Gedrückt halten zum Aufnehmen">●</button><div><strong id="record-status">Zum Aufnehmen gedrückt halten</strong><span id="record-timer">0:00</span></div><div class="voice-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div></div><div id="audio-preview" class="audio-preview" hidden></div>` : "";
   const preview = kind === "image" ? '<div id="upload-preview" class="upload-preview" hidden></div>' : "";
   const sizeHint = kind === "image" ? "Dein Foto wird vor dem Upload automatisch verkleinert und komprimiert." : hint;
   return `<form class="answer-form" id="answer-form"><label for="media-file">${label}</label>${previous}<input class="file-input" id="media-file" type="file" accept="${accept}">${preview}<p class="field-hint">${sizeHint}</p><div class="record-row">${recorderUi}</div><button class="primary-button">${kind === "audio" ? "Sprachnachricht speichern" : "Foto speichern"}</button></form>`;
 }
 
 function bindWorkshop() {
-  document.querySelectorAll("[data-workshop-day]").forEach((button) => button.addEventListener("click", () => { selectedWorkshopDay = Number(button.dataset.workshopDay); workshopDetailOpen = true; renderApp(); }));
+  document.querySelectorAll("[data-workshop-day]").forEach((button) => button.addEventListener("click", () => { selectedWorkshopDay = Number(button.dataset.workshopDay); drawingNewAttempt = false; workshopDetailOpen = true; renderApp(); }));
   if (!workshopDetailOpen) return;
   const prompt = prompts[state.session.partner][selectedWorkshopDay - 1];
   const answer = state.ownAnswers[selectedWorkshopDay];
@@ -563,14 +576,15 @@ function bindWorkshop() {
     count.hidden = textarea.value.length < 1800;
   });
   const form = document.querySelector("#answer-form");
-  if (form) form.addEventListener("submit", async (event) => {
+  if (form?.querySelector(".primary-button")) form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const button = form.querySelector(".primary-button");
     button.disabled = true;
     try {
       const result = await saveWorkshopAnswer(prompt, answer);
       state.ownAnswers[selectedWorkshopDay] = result;
-      renderApp("Gespeichert – du kannst deinen Beitrag jederzeit noch ändern.");
+      drawingNewAttempt = false;
+      showToast("Deine Überraschung ist gespeichert.");
     } catch (error) {
       button.disabled = false;
       const message = document.createElement("p");
@@ -583,13 +597,13 @@ function bindWorkshop() {
   if (prompt.kind === "audio") setupAudioFilePreview();
   if (prompt.kind === "drawing" || prompt.kind === "drawing-riddle") setupDrawing();
   if (prompt.kind === "map") setupMap(answer?.payload);
-  if (prompt.kind === "image") setupPhotoPreview();
+  if (prompt.kind === "image") { setupPhotoPreview(); setupAutomaticPhotoSave(prompt, answer); }
   if (prompt.kind === "meme") setupMemeEditor();
   if (prompt.kind === "ranking") setupRankingSort();
   if (prompt.kind === "offline" && state.session.partner === "pia" && selectedWorkshopDay === 6) setupPiaReminder();
   document.querySelector("#acknowledge-gift")?.addEventListener("click", () => {
     localStorage.setItem(giftAcknowledgementKey(state.session.partner), "yes");
-    renderApp("Wunderbar – das Türchen ist für Weihnachten aktiviert.");
+    showToast("Wunderbar – das Türchen ist für Weihnachten aktiviert.");
   });
   document.querySelector("#retract-answer")?.addEventListener("click", async () => {
     if (!window.confirm("Antwort wirklich zurückziehen? Sie wird wieder als unbearbeitet angezeigt.")) return;
@@ -599,11 +613,16 @@ function bindWorkshop() {
       await api(`/api/answers/${selectedWorkshopDay}`, { method: "DELETE" });
       delete state.ownAnswers[selectedWorkshopDay];
       state.withdrawableDays = state.withdrawableDays.filter((day) => day !== selectedWorkshopDay);
-      renderApp("Antwort zurückgezogen – das Türchen ist wieder unbearbeitet.");
+      showToast("Antwort zurückgezogen – das Türchen ist wieder unbearbeitet.");
     } catch (error) {
       button.disabled = false;
       renderApp(error.message);
     }
+  });
+  document.querySelector("#new-drawing")?.addEventListener("click", () => {
+    if (!window.confirm("Für einen neuen Versuch wird die bisherige Zeichnung ersetzt, sobald du speicherst. Weiter?") ) return;
+    drawingNewAttempt = true;
+    renderApp();
   });
   document.querySelector(".workshop-modal .modal-close")?.addEventListener("click", () => { workshopDetailOpen = false; renderApp(); });
   hydrateMedia();
@@ -710,11 +729,11 @@ async function saveWorkshopAnswer(prompt, previous) {
       catch { throw new Error("Bitte füge einen gültigen Link zu deinem Meme ein."); }
       answerKind = "link";
     } else {
-      let file = document.querySelector("#media-file")?.files?.[0] || null;
+      let file = format === "clipboard" ? pastedMemeFile : document.querySelector("#media-file")?.files?.[0] || null;
       if (file) file = await compressPhoto(file);
       if (file) payload = await uploadMedia(file, "image");
       else if (previous?.kind === "image" && previous?.payload?.mediaKey) payload = previous.payload;
-      else throw new Error("Bitte wähle ein Meme-Foto aus oder schicke stattdessen einen Link.");
+      else throw new Error("Bitte wähle, füge oder verlinke ein Meme.");
       content = "Ein Meme";
       answerKind = "image";
     }
@@ -744,10 +763,28 @@ async function saveWorkshopAnswer(prompt, previous) {
 }
 
 function setupMemeEditor() {
+  pastedMemeFile = null;
   const editors = [...document.querySelectorAll("[data-meme-editor]")];
   const showEditor = (kind) => editors.forEach((editor) => { editor.hidden = editor.dataset.memeEditor !== kind; });
   document.querySelectorAll('input[name="meme-kind"]').forEach((input) => input.addEventListener("change", () => showEditor(input.value)));
   setupPhotoPreview();
+  document.querySelector("#paste-meme")?.addEventListener("click", async () => {
+    const hint = document.querySelector("#clipboard-hint");
+    const preview = document.querySelector("#clipboard-preview");
+    try {
+      if (!navigator.clipboard?.read) throw new Error("Die Zwischenablage kann auf diesem Gerät nicht direkt gelesen werden.");
+      const items = await navigator.clipboard.read();
+      const item = items.find((entry) => entry.types.some((type) => type.startsWith("image/")));
+      const type = item?.types.find((entry) => entry.startsWith("image/"));
+      if (!item || !type) throw new Error("In deiner Zwischenablage liegt gerade kein Bild.");
+      const blob = await item.getType(type);
+      pastedMemeFile = new File([blob], "meme-aus-zwischenablage.png", { type: blob.type || "image/png" });
+      const url = URL.createObjectURL(pastedMemeFile);
+      preview.hidden = false;
+      preview.innerHTML = `<img src="${url}" alt="Vorschau des Memes aus der Zwischenablage"><span>Meme aus der Zwischenablage bereit</span>`;
+      hint.textContent = "Bild eingefügt – jetzt nur noch Meme speichern.";
+    } catch (error) { hint.textContent = error.message; }
+  });
 }
 
 function setupRiddleGuess() {
@@ -832,6 +869,29 @@ function setupPhotoPreview() {
   });
 }
 
+function setupAutomaticPhotoSave(prompt, previous) {
+  const input = document.querySelector("#media-file");
+  const form = document.querySelector("#answer-form");
+  const button = form?.querySelector(".primary-button");
+  const hint = form?.querySelector(".field-hint");
+  if (!input || !form || !button) return;
+  input.addEventListener("change", async () => {
+    if (!input.files?.[0]) return;
+    button.disabled = true;
+    button.textContent = "Foto wird gespeichert …";
+    if (hint) hint.textContent = "Dein Foto wird verkleinert und automatisch gespeichert …";
+    try {
+      const result = await saveWorkshopAnswer(prompt, previous);
+      state.ownAnswers[selectedWorkshopDay] = result;
+      showToast("Foto gespeichert – es wartet jetzt hinter dem Türchen.");
+    } catch (error) {
+      button.disabled = false;
+      button.textContent = "Foto speichern";
+      if (hint) hint.textContent = error.message;
+    }
+  });
+}
+
 function setupAudioFilePreview() {
   const input = document.querySelector("#media-file");
   if (!input) return;
@@ -901,10 +961,18 @@ function canvasBlob(canvas, type, quality) {
 function setupRecorder() {
   const button = document.querySelector("#record-audio");
   if (!button || !navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return;
-  button.addEventListener("click", async () => {
+  let holding = false;
+  const stop = () => {
+    holding = false;
+    if (recorder?.state === "recording") recorder.stop();
+  };
+  const start = async (event) => {
+    event.preventDefault();
+    holding = true;
+    button.setPointerCapture?.(event.pointerId);
     const status = document.querySelector("#record-status");
     const timer = document.querySelector("#record-timer");
-    if (recorder?.state === "recording") { recorder.stop(); return; }
+    if (recorder?.state === "recording") return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const chunks = [];
@@ -924,11 +992,17 @@ function setupRecorder() {
       const started = Date.now();
       clearInterval(recordingTimer);
       recordingTimer = setInterval(() => { const seconds = Math.floor((Date.now() - started) / 1000); timer.textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`; if (seconds >= 90) recorder.stop(); }, 250);
-      button.textContent = "■";
-      button.setAttribute("aria-label", "Aufnahme beenden");
-      status.textContent = "Aufnahme läuft …";
+      button.textContent = "●";
+      button.setAttribute("aria-label", "Aufnahme läuft – zum Beenden loslassen");
+      status.textContent = "Aufnahme läuft – zum Beenden loslassen …";
+      if (!holding) recorder.stop();
     } catch { status.textContent = "Das Mikrofon ist nicht verfügbar. Du kannst stattdessen eine Audiodatei auswählen."; }
-  });
+  };
+  button.addEventListener("pointerdown", start);
+  button.addEventListener("pointerup", stop);
+  button.addEventListener("pointercancel", stop);
+  button.addEventListener("lostpointercapture", stop);
+  button.addEventListener("contextmenu", (event) => event.preventDefault());
 }
 
 function setupDrawing() {
